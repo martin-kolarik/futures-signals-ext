@@ -1,4 +1,3 @@
-#![feature(lazy_cell)]
 #![feature(return_position_impl_trait_in_trait)]
 
 mod futures_signals_spawn;
