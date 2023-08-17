@@ -1,0 +1,15 @@
+[package]
+name = "futures-signals-ext"
+version = "0.1.0"
+edition = "2021"
+authors = ["martin.kolarik@smartcontrol.cz"]
+
+[features]
+default = ["option", "spawn", "spawn_local"]
+option = []
+spawn = []
+spawn_local = []
+
+[dependencies]
+futures-signals = { version = "^0.3", default-features = false }
+pin-project-lite = { version = "^0.2" }
