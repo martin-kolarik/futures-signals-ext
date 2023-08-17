@@ -9,10 +9,10 @@ repository = "https://github.com/martin-kolarik/futures-signals-ext"
 homepage = "https://github.com/martin-kolarik/futures-signals-ext"
 
 [features]
-default = ["option", "spawn", "spawn_local"]
+default = ["option", "spawn", "spawn-local"]
 option = []
 spawn = ["async-global-executor"]
-spawn_local = ["async-global-executor"]
+spawn-local = ["async-global-executor"]
 
 [dependencies]
 async-global-executor = { version = "^2.3", default-features = false, optional = true }
