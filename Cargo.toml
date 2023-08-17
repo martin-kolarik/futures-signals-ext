@@ -1,15 +1,20 @@
 [package]
 name = "futures-signals-ext"
 version = "0.1.0"
-edition = "2021"
 authors = ["martin.kolarik@smartcontrol.cz"]
+description = "Extension to futures-signals: MutableOption with combinators, spawning, predicate driven selections from SignalVec."
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/martin-kolarik/futures-signals-ext"
+homepage = "https://github.com/martin-kolarik/futures-signals-ext"
 
 [features]
 default = ["option", "spawn", "spawn_local"]
 option = []
-spawn = []
-spawn_local = []
+spawn = ["async-global-executor"]
+spawn_local = ["async-global-executor"]
 
 [dependencies]
+async-global-executor = { version = "^2.3", default-features = false, optional = true }
 futures-signals = { version = "^0.3", default-features = false }
 pin-project-lite = { version = "^0.2" }

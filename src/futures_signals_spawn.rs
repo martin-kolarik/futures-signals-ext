@@ -1,8 +1,9 @@
-use async_std::future::ready;
+use std::future::ready;
+
 #[cfg(feature = "spawn")]
-use async_std::task::spawn;
+use async_global_executor::spawn;
 #[cfg(feature = "spawn_local")]
-use async_std::task::spawn_local;
+use async_global_executor::spawn_local;
 use futures_signals::{
     signal::{Signal, SignalExt},
     signal_vec::{SignalVec, SignalVecExt, VecDiff},
@@ -34,7 +35,8 @@ where
         spawn(self.for_each(move |new| {
             f(new);
             ready(())
-        }));
+        }))
+        .detach();
     }
 
     #[cfg(feature = "spawn_local")]
@@ -45,7 +47,8 @@ where
         spawn_local(self.for_each(move |new| {
             f(new);
             ready(())
-        }));
+        }))
+        .detach();
     }
 }
 
@@ -75,7 +78,8 @@ where
         spawn(self.for_each(move |new| {
             f(new);
             ready(())
-        }));
+        }))
+        .detach();
     }
 
     #[cfg(feature = "spawn_local")]
@@ -86,6 +90,7 @@ where
         spawn_local(self.for_each(move |new| {
             f(new);
             ready(())
-        }));
+        }))
+        .detach();
     }
 }
