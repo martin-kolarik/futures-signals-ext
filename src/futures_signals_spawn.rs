@@ -2,7 +2,7 @@ use std::future::ready;
 
 #[cfg(feature = "spawn")]
 use async_global_executor::spawn;
-#[cfg(feature = "spawn_local")]
+#[cfg(feature = "spawn-local")]
 use async_global_executor::spawn_local;
 use futures_signals::{
     signal::{Signal, SignalExt},
@@ -16,7 +16,7 @@ pub trait SignalSpawn<A> {
         Self: Send,
         F: Fn(A) + Send + 'static;
 
-    #[cfg(feature = "spawn_local")]
+    #[cfg(feature = "spawn-local")]
     fn spawn_local<F>(self, f: F)
     where
         F: Fn(A) + 'static;
@@ -39,7 +39,7 @@ where
         .detach();
     }
 
-    #[cfg(feature = "spawn_local")]
+    #[cfg(feature = "spawn-local")]
     fn spawn_local<F>(self, f: F)
     where
         F: Fn(A) + 'static,
@@ -59,7 +59,7 @@ pub trait SignalVecSpawn<A> {
         Self: Send,
         F: Fn(VecDiff<A>) + Send + 'static;
 
-    #[cfg(feature = "spawn_local")]
+    #[cfg(feature = "spawn-local")]
     fn spawn_local<F>(self, f: F)
     where
         F: Fn(VecDiff<A>) + 'static;
@@ -82,7 +82,7 @@ where
         .detach();
     }
 
-    #[cfg(feature = "spawn_local")]
+    #[cfg(feature = "spawn-local")]
     fn spawn_local<F>(self, f: F)
     where
         F: Fn(VecDiff<A>) + 'static,
