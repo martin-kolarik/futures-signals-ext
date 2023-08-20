@@ -1,6 +1,6 @@
 [package]
 name = "futures-signals-ext"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["martin.kolarik@smartcontrol.cz"]
 description = "Extension to futures-signals: MutableOption with combinators, spawning, predicate driven selections from SignalVec."
 edition = "2021"

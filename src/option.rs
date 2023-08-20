@@ -55,18 +55,19 @@ impl<T> MutableOption<T> {
         self.0.lock_ref().is_some()
     }
 
-    pub fn empty_if_contains(&self, value: &T)
+    pub fn take(self) -> Option<T> {
+        self.0.take()
+    }
+
+    pub fn take_if_value(&self, value: &T) -> Option<T>
     where
         T: PartialEq,
     {
         let mut current = self.0.lock_mut();
-        if matches!(&*current, Some(current_value) if current_value == value) {
-            *current = None;
+        match &*current {
+            Some(current_value) if current_value == value => current.take(),
+            _ => None,
         }
-    }
-
-    pub fn take(self) -> Option<T> {
-        self.0.take()
     }
 
     pub fn map<F>(&self, f: impl FnOnce(&T) -> F) -> Option<F> {
