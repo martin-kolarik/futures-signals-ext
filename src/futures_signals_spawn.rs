@@ -32,6 +32,7 @@ where
         Self: Send,
         F: Fn(A) + Send + 'static,
     {
+        async_global_executor::init();
         spawn(self.for_each(move |new| {
             f(new);
             ready(())
@@ -44,6 +45,7 @@ where
     where
         F: Fn(A) + 'static,
     {
+        async_global_executor::init();
         spawn_local(self.for_each(move |new| {
             f(new);
             ready(())
@@ -75,6 +77,7 @@ where
         Self: Send,
         F: Fn(VecDiff<A>) + Send + 'static,
     {
+        async_global_executor::init();
         spawn(self.for_each(move |new| {
             f(new);
             ready(())
@@ -87,6 +90,7 @@ where
     where
         F: Fn(VecDiff<A>) + 'static,
     {
+        async_global_executor::init();
         spawn_local(self.for_each(move |new| {
             f(new);
             ready(())
