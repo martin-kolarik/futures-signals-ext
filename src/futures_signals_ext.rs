@@ -1,6 +1,9 @@
 use futures_signals::{
     signal::{Mutable, Signal},
-    signal_vec::{MutableVec, MutableVecLockMut, MutableVecLockRef, SignalVec, SignalVecExt},
+    signal_vec::{
+        Filter, FilterSignalCloned, MutableSignalVec, MutableVec, MutableVecLockMut,
+        MutableVecLockRef, SignalVec, SignalVecExt,
+    },
 };
 use pin_project_lite::pin_project;
 use std::pin::Pin;
@@ -97,78 +100,29 @@ pub trait MutableVecExt<A> {
     where
         F: FnMut(&A) -> Option<U>;
 
-    fn signal_vec_filter<P>(&self, p: P) -> impl SignalVec<Item = A>
+    fn signal_vec_filter<P>(&self, p: P) -> Filter<MutableSignalVec<A>, P>
     where
         A: Copy,
         P: FnMut(&A) -> bool;
 
-    fn signal_vec_filter_cloned<P>(&self, p: P) -> impl SignalVec<Item = A>
+    fn signal_vec_filter_cloned<P>(&self, p: P) -> Filter<MutableSignalVec<A>, P>
     where
         A: Clone,
         P: FnMut(&A) -> bool;
 
-    fn signal_for_item<P>(&self, p: P) -> impl Signal<Item = Option<A>>
-    where
-        A: Copy,
-        P: FnMut(&A) -> bool;
-
-    fn signal_for_item_cloned<P>(&self, p: P) -> impl Signal<Item = Option<A>>
-    where
-        A: Clone,
-        P: FnMut(&A) -> bool;
-
-    fn signal_for_item_map<P, F, U>(&self, p: P, f: F) -> impl Signal<Item = Option<U>>
-    where
-        A: Copy,
-        P: FnMut(&A) -> bool,
-        F: FnMut(&A) -> U;
-
-    fn signal_for_item_map_cloned<P, F, U>(&self, p: P, f: F) -> impl Signal<Item = Option<U>>
-    where
-        A: Clone,
-        P: FnMut(&A) -> bool,
-        F: FnMut(&A) -> U;
-
-    fn signal_vec_filter_signal<P, S>(&self, p: P) -> impl SignalVec<Item = A>
+    fn signal_vec_filter_signal<P, S>(&self, p: P) -> FilterSignalCloned<MutableSignalVec<A>, S, P>
     where
         A: Copy,
         P: FnMut(&A) -> S,
         S: Signal<Item = bool>;
 
-    fn signal_vec_filter_signal_cloned<P, S>(&self, p: P) -> impl SignalVec<Item = A>
-    where
-        A: Clone,
-        P: FnMut(&A) -> S,
-        S: Signal<Item = bool>;
-
-    fn signal_for_item_signal<P, S>(&self, p: P) -> impl Signal<Item = Option<A>>
-    where
-        A: Copy,
-        P: FnMut(&A) -> S,
-        S: Signal<Item = bool>;
-
-    fn signal_for_item_signal_cloned<P, S>(&self, p: P) -> impl Signal<Item = Option<A>>
-    where
-        A: Clone,
-        P: FnMut(&A) -> S,
-        S: Signal<Item = bool>;
-
-    fn signal_for_item_signal_map<P, F, S, U>(&self, p: P, f: F) -> impl Signal<Item = Option<U>>
-    where
-        A: Copy,
-        P: FnMut(&A) -> S,
-        F: FnMut(&A) -> U + 'static,
-        S: Signal<Item = bool>;
-
-    fn signal_for_item_signal_map_cloned<P, F, S, U>(
+    fn signal_vec_filter_signal_cloned<P, S>(
         &self,
         p: P,
-        f: F,
-    ) -> impl Signal<Item = Option<U>>
+    ) -> FilterSignalCloned<MutableSignalVec<A>, S, P>
     where
         A: Clone,
         P: FnMut(&A) -> S,
-        F: FnMut(&A) -> U + 'static,
         S: Signal<Item = bool>;
 }
 
@@ -255,7 +209,7 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         self.lock_ref().iter().find_map(f)
     }
 
-    fn signal_vec_filter<P>(&self, p: P) -> impl SignalVec<Item = A>
+    fn signal_vec_filter<P>(&self, p: P) -> Filter<MutableSignalVec<A>, P>
     where
         A: Copy,
         P: FnMut(&A) -> bool,
@@ -263,7 +217,7 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         self.signal_vec().filter(p)
     }
 
-    fn signal_vec_filter_cloned<P>(&self, p: P) -> impl SignalVec<Item = A>
+    fn signal_vec_filter_cloned<P>(&self, p: P) -> Filter<MutableSignalVec<A>, P>
     where
         A: Clone,
         P: FnMut(&A) -> bool,
@@ -271,45 +225,7 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         self.signal_vec_cloned().filter(p)
     }
 
-    #[inline]
-    fn signal_for_item<P>(&self, p: P) -> impl Signal<Item = Option<A>>
-    where
-        A: Copy,
-        P: FnMut(&A) -> bool,
-    {
-        self.signal_for_item_map(p, |i| *i)
-    }
-
-    #[inline]
-    fn signal_for_item_cloned<P>(&self, p: P) -> impl Signal<Item = Option<A>>
-    where
-        A: Clone,
-        P: FnMut(&A) -> bool,
-    {
-        self.signal_for_item_map_cloned(p, |i| i.clone())
-    }
-
-    fn signal_for_item_map<P, F, U>(&self, p: P, mut f: F) -> impl Signal<Item = Option<U>>
-    where
-        A: Copy,
-        P: FnMut(&A) -> bool,
-        F: FnMut(&A) -> U,
-    {
-        self.signal_vec_filter(p)
-            .to_signal_map(move |e| e.first().map(&mut f))
-    }
-
-    fn signal_for_item_map_cloned<P, F, U>(&self, p: P, mut f: F) -> impl Signal<Item = Option<U>>
-    where
-        A: Clone,
-        P: FnMut(&A) -> bool,
-        F: FnMut(&A) -> U,
-    {
-        self.signal_vec_filter_cloned(p)
-            .to_signal_map(move |e| e.first().map(&mut f))
-    }
-
-    fn signal_vec_filter_signal<P, S>(&self, p: P) -> impl SignalVec<Item = A>
+    fn signal_vec_filter_signal<P, S>(&self, p: P) -> FilterSignalCloned<MutableSignalVec<A>, S, P>
     where
         A: Copy,
         P: FnMut(&A) -> S,
@@ -318,7 +234,10 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         self.signal_vec().filter_signal_cloned(p)
     }
 
-    fn signal_vec_filter_signal_cloned<P, S>(&self, p: P) -> impl SignalVec<Item = A>
+    fn signal_vec_filter_signal_cloned<P, S>(
+        &self,
+        p: P,
+    ) -> FilterSignalCloned<MutableSignalVec<A>, S, P>
     where
         A: Clone,
         P: FnMut(&A) -> S,
@@ -326,55 +245,39 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
     {
         self.signal_vec_cloned().filter_signal_cloned(p)
     }
+}
 
-    #[inline]
-    fn signal_for_item_signal<P, S>(&self, p: P) -> impl Signal<Item = Option<A>>
+pub trait SignalVecItemExt<A> {
+    fn item(self) -> impl Signal<Item = Option<A>>
     where
         A: Copy,
-        P: FnMut(&A) -> S,
-        S: Signal<Item = bool>,
+        Self: Sized,
     {
-        self.signal_for_item_signal_map(p, |i| *i)
+        self.item_map(|i| *i)
     }
 
-    #[inline]
-    fn signal_for_item_signal_cloned<P, S>(&self, p: P) -> impl Signal<Item = Option<A>>
+    fn item_cloned(self) -> impl Signal<Item = Option<A>>
     where
         A: Clone,
-        P: FnMut(&A) -> S,
-        S: Signal<Item = bool>,
+        Self: Sized,
     {
-        self.signal_for_item_signal_map_cloned(p, |i| i.clone())
+        self.item_map(|i| i.clone())
     }
 
-    fn signal_for_item_signal_map<P, F, S, U>(
-        &self,
-        p: P,
-        mut f: F,
-    ) -> impl Signal<Item = Option<U>>
+    fn item_map<F, U>(self, f: F) -> impl Signal<Item = Option<U>>
     where
-        A: Copy,
-        P: FnMut(&A) -> S,
-        F: FnMut(&A) -> U + 'static,
-        S: Signal<Item = bool>,
-    {
-        self.signal_vec_filter_signal(p)
-            .to_signal_map(move |items| items.first().map(&mut f))
-    }
+        F: FnMut(&A) -> U;
+}
 
-    fn signal_for_item_signal_map_cloned<P, F, S, U>(
-        &self,
-        p: P,
-        mut f: F,
-    ) -> impl Signal<Item = Option<U>>
+impl<A, S> SignalVecItemExt<A> for S
+where
+    S: SignalVec<Item = A>,
+{
+    fn item_map<F, U>(self, mut f: F) -> impl Signal<Item = Option<U>>
     where
-        A: Clone,
-        P: FnMut(&A) -> S,
-        F: FnMut(&A) -> U + 'static,
-        S: Signal<Item = bool>,
+        F: FnMut(&A) -> U,
     {
-        self.signal_vec_filter_signal_cloned(p)
-            .to_signal_map(move |items| items.first().map(&mut f))
+        self.to_signal_map(move |items| items.first().map(&mut f))
     }
 }
 
