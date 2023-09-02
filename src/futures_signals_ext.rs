@@ -247,33 +247,33 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
     }
 }
 
-pub trait SignalVecItemExt<A> {
-    fn item(self) -> impl Signal<Item = Option<A>>
+pub trait SignalVecFirstExt<A> {
+    fn first(self) -> impl Signal<Item = Option<A>>
     where
         A: Copy,
         Self: Sized,
     {
-        self.item_map(|i| *i)
+        self.first_map(|i| *i)
     }
 
-    fn item_cloned(self) -> impl Signal<Item = Option<A>>
+    fn first_cloned(self) -> impl Signal<Item = Option<A>>
     where
         A: Clone,
         Self: Sized,
     {
-        self.item_map(|i| i.clone())
+        self.first_map(|i| i.clone())
     }
 
-    fn item_map<F, U>(self, f: F) -> impl Signal<Item = Option<U>>
+    fn first_map<F, U>(self, f: F) -> impl Signal<Item = Option<U>>
     where
         F: FnMut(&A) -> U;
 }
 
-impl<A, S> SignalVecItemExt<A> for S
+impl<A, S> SignalVecFirstExt<A> for S
 where
     S: SignalVec<Item = A>,
 {
-    fn item_map<F, U>(self, mut f: F) -> impl Signal<Item = Option<U>>
+    fn first_map<F, U>(self, mut f: F) -> impl Signal<Item = Option<U>>
     where
         F: FnMut(&A) -> U,
     {
