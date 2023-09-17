@@ -6,8 +6,8 @@ use futures_signals::{
     },
 };
 use pin_project_lite::pin_project;
-use std::pin::Pin;
 use std::task::{Context, Poll};
+use std::{cmp, pin::Pin};
 use std::{marker::PhantomData, mem};
 
 pub trait MutableExt<A> {
@@ -92,13 +92,43 @@ pub trait MutableVecExt<A> {
     where
         F: FnMut(&A) -> U;
 
-    fn filter_map<F, U>(&self, f: F) -> Vec<U>
+    fn filter_map<P, U>(&self, p: P) -> Vec<U>
     where
-        F: FnMut(&A) -> Option<U>;
+        P: FnMut(&A) -> Option<U>;
 
-    fn find_map<F, U>(&self, f: F) -> Option<U>
+    fn find_map<P, U>(&self, p: P) -> Option<U>
     where
-        F: FnMut(&A) -> Option<U>;
+        P: FnMut(&A) -> Option<U>;
+
+    fn find_set<P>(&self, p: P, item: A)
+    where
+        A: Copy,
+        P: FnMut(&A) -> bool;
+
+    fn find_set_cloned<P>(&self, p: P, item: A)
+    where
+        A: Clone,
+        P: FnMut(&A) -> bool;
+
+    fn find_set_or_add<P>(&self, p: P, item: A)
+    where
+        A: Copy,
+        P: FnMut(&A) -> bool;
+
+    fn find_set_or_add_cloned<P>(&self, p: P, item: A)
+    where
+        A: Clone,
+        P: FnMut(&A) -> bool;
+
+    fn find_set_or_insert<O>(&self, o: O, item: A)
+    where
+        A: Copy,
+        O: FnMut(&A) -> cmp::Ordering;
+
+    fn find_set_or_insert_cloned<O>(&self, o: O, item: A)
+    where
+        A: Clone,
+        O: FnMut(&A) -> cmp::Ordering;
 
     fn signal_vec_filter<P>(&self, p: P) -> Filter<MutableSignalVec<A>, P>
     where
@@ -195,18 +225,88 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         self.lock_ref().iter().map(f).collect()
     }
 
-    fn filter_map<F, U>(&self, f: F) -> Vec<U>
+    fn filter_map<P, U>(&self, p: P) -> Vec<U>
     where
-        F: FnMut(&A) -> Option<U>,
+        P: FnMut(&A) -> Option<U>,
     {
-        self.lock_ref().iter().filter_map(f).collect()
+        self.lock_ref().iter().filter_map(p).collect()
     }
 
-    fn find_map<F, U>(&self, f: F) -> Option<U>
+    fn find_map<P, U>(&self, p: P) -> Option<U>
     where
-        F: FnMut(&A) -> Option<U>,
+        P: FnMut(&A) -> Option<U>,
     {
-        self.lock_ref().iter().find_map(f)
+        self.lock_ref().iter().find_map(p)
+    }
+
+    fn find_set<P>(&self, p: P, item: A)
+    where
+        A: Copy,
+        P: FnMut(&A) -> bool,
+    {
+        let mut lock = self.lock_mut();
+        if let Some(index) = lock.iter().position(p) {
+            lock.set(index, item);
+        }
+    }
+
+    fn find_set_cloned<P>(&self, p: P, item: A)
+    where
+        A: Clone,
+        P: FnMut(&A) -> bool,
+    {
+        let mut lock = self.lock_mut();
+        if let Some(index) = lock.iter().position(p) {
+            lock.set_cloned(index, item);
+        }
+    }
+
+    fn find_set_or_add<P>(&self, p: P, item: A)
+    where
+        A: Copy,
+        P: FnMut(&A) -> bool,
+    {
+        let mut lock = self.lock_mut();
+        match lock.iter().position(p) {
+            Some(index) => lock.set(index, item),
+            None => lock.push(item),
+        }
+    }
+
+    fn find_set_or_add_cloned<P>(&self, p: P, item: A)
+    where
+        A: Clone,
+        P: FnMut(&A) -> bool,
+    {
+        let mut lock = self.lock_mut();
+        match lock.iter().position(p) {
+            Some(index) => lock.set_cloned(index, item),
+            None => lock.push_cloned(item),
+        }
+    }
+
+    fn find_set_or_insert<O>(&self, o: O, item: A)
+    where
+        A: Copy,
+        O: FnMut(&A) -> cmp::Ordering,
+    {
+        let mut lock = self.lock_mut();
+        match lock.binary_search_by(o) {
+            Ok(index) => lock.set(index, item),
+            Err(index) => lock.insert(index, item),
+        }
+    }
+
+    fn find_set_or_insert_cloned<O>(&self, o: O, item: A)
+    where
+        A: Clone,
+        O: FnMut(&A) -> cmp::Ordering,
+    {
+        let mut lock = self.lock_mut();
+        match lock.binary_search_by(o) {
+            Ok(index) => lock.set_cloned(index, item),
+            Err(index) => lock.insert_cloned(index, item),
+        }
     }
 
     fn signal_vec_filter<P>(&self, p: P) -> Filter<MutableSignalVec<A>, P>
