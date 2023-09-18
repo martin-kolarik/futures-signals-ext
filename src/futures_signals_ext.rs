@@ -130,6 +130,10 @@ pub trait MutableVecExt<A> {
         A: Clone,
         O: FnMut(&A) -> cmp::Ordering;
 
+    fn find_remove<P>(&self, p: P) -> bool
+    where
+        P: FnMut(&A) -> bool;
+
     fn signal_vec_filter<P>(&self, p: P) -> Filter<MutableSignalVec<A>, P>
     where
         A: Copy,
@@ -312,6 +316,19 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         match lock.binary_search_by(o) {
             Ok(index) => lock.set_cloned(index, item),
             Err(index) => lock.insert_cloned(index, item),
+        }
+    }
+
+    fn find_remove<P>(&self, p: P) -> bool
+    where
+        P: FnMut(&A) -> bool,
+    {
+        let mut lock = self.lock_mut();
+        if let Some(index) = lock.iter().position(p) {
+            lock.remove(index);
+            true
+        } else {
+            false
         }
     }
 
