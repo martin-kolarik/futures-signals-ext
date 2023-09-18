@@ -100,12 +100,12 @@ pub trait MutableVecExt<A> {
     where
         P: FnMut(&A) -> Option<U>;
 
-    fn find_set<P>(&self, p: P, item: A)
+    fn find_set<P>(&self, p: P, item: A) -> bool
     where
         A: Copy,
         P: FnMut(&A) -> bool;
 
-    fn find_set_cloned<P>(&self, p: P, item: A)
+    fn find_set_cloned<P>(&self, p: P, item: A) -> bool
     where
         A: Clone,
         P: FnMut(&A) -> bool;
@@ -239,7 +239,7 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         self.lock_ref().iter().find_map(p)
     }
 
-    fn find_set<P>(&self, p: P, item: A)
+    fn find_set<P>(&self, p: P, item: A) -> bool
     where
         A: Copy,
         P: FnMut(&A) -> bool,
@@ -247,10 +247,13 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         let mut lock = self.lock_mut();
         if let Some(index) = lock.iter().position(p) {
             lock.set(index, item);
+            true
+        } else {
+            false
         }
     }
 
-    fn find_set_cloned<P>(&self, p: P, item: A)
+    fn find_set_cloned<P>(&self, p: P, item: A) -> bool
     where
         A: Clone,
         P: FnMut(&A) -> bool,
@@ -258,6 +261,9 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         let mut lock = self.lock_mut();
         if let Some(index) = lock.iter().position(p) {
             lock.set_cloned(index, item);
+            true
+        } else {
+            false
         }
     }
 
