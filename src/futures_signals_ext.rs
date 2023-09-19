@@ -498,7 +498,7 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
     }
 }
 
-pub trait SignalVecFirstExt<A> {
+pub trait SignalVecFinalizerExt<A> {
     fn first(self) -> impl Signal<Item = Option<A>>
     where
         A: Copy,
@@ -518,9 +518,21 @@ pub trait SignalVecFirstExt<A> {
     fn first_map<F, U>(self, f: F) -> impl Signal<Item = Option<U>>
     where
         F: FnMut(&A) -> U;
+
+    fn is_empty(self) -> impl Signal<Item = bool>;
+
+    fn len(self) -> impl Signal<Item = usize>;
+
+    fn all<F>(self, f: F) -> impl Signal<Item = bool>
+    where
+        F: FnMut(&A) -> bool;
+
+    fn any<F>(self, f: F) -> impl Signal<Item = bool>
+    where
+        F: FnMut(&A) -> bool;
 }
 
-impl<A, S> SignalVecFirstExt<A> for S
+impl<A, S> SignalVecFinalizerExt<A> for S
 where
     S: SignalVec<Item = A>,
 {
@@ -529,6 +541,28 @@ where
         F: FnMut(&A) -> U,
     {
         self.to_signal_map(move |items| items.first().map(&mut f))
+    }
+
+    fn is_empty(self) -> impl Signal<Item = bool> {
+        self.to_signal_map(move |items| items.is_empty())
+    }
+
+    fn len(self) -> impl Signal<Item = usize> {
+        self.to_signal_map(move |items| items.len())
+    }
+
+    fn all<F>(self, mut f: F) -> impl Signal<Item = bool>
+    where
+        F: FnMut(&A) -> bool,
+    {
+        self.to_signal_map(move |items| items.iter().all(&mut f))
+    }
+
+    fn any<F>(self, mut f: F) -> impl Signal<Item = bool>
+    where
+        F: FnMut(&A) -> bool,
+    {
+        self.to_signal_map(move |items| items.iter().any(&mut f))
     }
 }
 
