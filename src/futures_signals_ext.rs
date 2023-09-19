@@ -1,8 +1,8 @@
 use futures_signals::{
     signal::{Mutable, Signal},
     signal_vec::{
-        Filter, FilterSignalCloned, MutableSignalVec, MutableVec, MutableVecLockMut,
-        MutableVecLockRef, SignalVec, SignalVecExt,
+        Filter, FilterSignalCloned, MutableSignalVec, MutableVec, MutableVecLockMut, SignalVec,
+        SignalVecExt,
     },
 };
 use pin_project_lite::pin_project;
@@ -81,10 +81,14 @@ impl<A> MutableExt<A> for Mutable<A> {
 pub trait MutableVecExt<A> {
     fn map_vec<F, U>(&self, f: F) -> U
     where
-        F: FnMut(&[A]) -> U;
+        F: FnOnce(&[A]) -> U;
 
-    fn inspect(&self, f: impl FnOnce(&MutableVecLockRef<A>));
-    fn inspect_mut(&self, f: impl FnOnce(&mut MutableVecLockMut<A>));
+    fn map_vec_mut<F, U>(&self, f: F) -> U
+    where
+        F: FnOnce(MutableVecLockMut<A>) -> U;
+
+    fn inspect(&self, f: impl FnOnce(&[A]));
+    fn inspect_mut(&self, f: impl FnOnce(MutableVecLockMut<A>));
 
     fn find_inspect_mut<P, F>(&self, predicate: P, f: F) -> Option<bool>
     where
@@ -191,19 +195,26 @@ pub trait MutableVecExt<A> {
 }
 
 impl<A> MutableVecExt<A> for MutableVec<A> {
-    fn map_vec<F, U>(&self, mut f: F) -> U
+    fn map_vec<F, U>(&self, f: F) -> U
     where
-        F: FnMut(&[A]) -> U,
+        F: FnOnce(&[A]) -> U,
     {
         f(&self.lock_ref())
     }
 
-    fn inspect(&self, f: impl FnOnce(&MutableVecLockRef<A>)) {
+    fn map_vec_mut<F, U>(&self, f: F) -> U
+    where
+        F: FnOnce(MutableVecLockMut<A>) -> U,
+    {
+        f(self.lock_mut())
+    }
+
+    fn inspect(&self, f: impl FnOnce(&[A])) {
         f(&self.lock_ref())
     }
 
-    fn inspect_mut(&self, f: impl FnOnce(&mut MutableVecLockMut<A>)) {
-        f(&mut self.lock_mut())
+    fn inspect_mut(&self, f: impl FnOnce(MutableVecLockMut<A>)) {
+        f(self.lock_mut())
     }
 
     /// Return parameter of F (changed) drives if the value should be written back,
