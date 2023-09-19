@@ -6,9 +6,15 @@ use futures_signals::{
     },
 };
 use pin_project_lite::pin_project;
-use std::task::{Context, Poll};
-use std::{cmp, pin::Pin};
-use std::{marker::PhantomData, mem};
+use std::{
+    cmp,
+    collections::HashMap,
+    hash::Hash,
+    marker::PhantomData,
+    mem,
+    pin::Pin,
+    task::{Context, Poll},
+};
 
 pub trait MutableExt<A> {
     fn inspect(&self, f: impl FnOnce(&A));
@@ -73,6 +79,10 @@ impl<A> MutableExt<A> for Mutable<A> {
 }
 
 pub trait MutableVecExt<A> {
+    fn map_vec<F, U>(&self, f: F) -> U
+    where
+        F: FnMut(&[A]) -> U;
+
     fn inspect(&self, f: impl FnOnce(&MutableVecLockRef<A>));
     fn inspect_mut(&self, f: impl FnOnce(&mut MutableVecLockMut<A>));
 
@@ -134,6 +144,26 @@ pub trait MutableVecExt<A> {
     where
         P: FnMut(&A) -> bool;
 
+    fn extend(&self, source: impl IntoIterator<Item = A>)
+    where
+        A: Copy;
+
+    fn extend_cloned(&self, source: impl IntoIterator<Item = A>)
+    where
+        A: Clone;
+
+    fn replace_or_extend<K, E>(&self, k: K, source: impl IntoIterator<Item = A>)
+    where
+        A: Copy,
+        K: FnMut(&A) -> E,
+        E: Eq + Hash;
+
+    fn replace_or_extend_cloned<K, E>(&self, k: K, source: impl IntoIterator<Item = A>)
+    where
+        A: Clone,
+        K: FnMut(&A) -> E,
+        E: Eq + Hash;
+
     fn signal_vec_filter<P>(&self, p: P) -> Filter<MutableSignalVec<A>, P>
     where
         A: Copy,
@@ -161,6 +191,13 @@ pub trait MutableVecExt<A> {
 }
 
 impl<A> MutableVecExt<A> for MutableVec<A> {
+    fn map_vec<F, U>(&self, mut f: F) -> U
+    where
+        F: FnMut(&[A]) -> U,
+    {
+        f(&self.lock_ref())
+    }
+
     fn inspect(&self, f: impl FnOnce(&MutableVecLockRef<A>)) {
         f(&self.lock_ref())
     }
@@ -329,6 +366,86 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
             true
         } else {
             false
+        }
+    }
+
+    fn extend(&self, source: impl IntoIterator<Item = A>)
+    where
+        A: Copy,
+    {
+        let mut lock = self.lock_mut();
+        for item in source.into_iter() {
+            lock.push(item);
+        }
+    }
+
+    fn extend_cloned(&self, source: impl IntoIterator<Item = A>)
+    where
+        A: Clone,
+    {
+        let mut lock = self.lock_mut();
+        for item in source.into_iter() {
+            lock.push_cloned(item);
+        }
+    }
+
+    fn replace_or_extend<F, K>(&self, mut f: F, source: impl IntoIterator<Item = A>)
+    where
+        A: Copy,
+        F: FnMut(&A) -> K,
+        K: Eq + Hash,
+    {
+        let mut source = source
+            .into_iter()
+            .map(|item| (f(&item), item))
+            .collect::<HashMap<_, _>>();
+        let mut lock = self.lock_mut();
+        let indexes = lock
+            .iter()
+            .enumerate()
+            .filter_map(|(index, item)| {
+                let key = f(item);
+                source.get(&key).map(|_| (index, key))
+            })
+            .collect::<Vec<_>>();
+        for (index, item) in indexes
+            .into_iter()
+            .filter_map(|(index, key)| source.remove(&key).map(|item| (index, item)))
+        {
+            lock.set(index, item)
+        }
+        for (_, item) in source.into_iter() {
+            lock.push(item);
+        }
+    }
+
+    fn replace_or_extend_cloned<F, K>(&self, mut f: F, source: impl IntoIterator<Item = A>)
+    where
+        A: Clone,
+        F: FnMut(&A) -> K,
+        K: Eq + Hash,
+    {
+        let mut source = source
+            .into_iter()
+            .map(|item| (f(&item), item))
+            .collect::<HashMap<_, _>>();
+        let mut lock = self.lock_mut();
+        let indexes = lock
+            .iter()
+            .enumerate()
+            .filter_map(|(index, item)| {
+                let key = f(item);
+                source.get(&key).map(|_| (index, key))
+            })
+            .collect::<Vec<_>>();
+        for (index, item) in indexes
+            .into_iter()
+            .filter_map(|(index, key)| source.remove(&key).map(|item| (index, item)))
+        {
+            lock.set_cloned(index, item)
+        }
+        for (_, item) in source.into_iter() {
+            lock.push_cloned(item);
         }
     }
 
