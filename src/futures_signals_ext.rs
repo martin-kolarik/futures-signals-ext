@@ -156,17 +156,17 @@ pub trait MutableVecExt<A> {
     where
         A: Clone;
 
-    fn replace_or_extend<K, E>(&self, k: K, source: impl IntoIterator<Item = A>)
+    fn replace_or_extend<F, K>(&self, f: F, source: impl IntoIterator<Item = A>)
     where
         A: Copy,
-        K: FnMut(&A) -> E,
-        E: Eq + Hash;
+        F: FnMut(&A) -> K,
+        K: Eq + Hash;
 
-    fn replace_or_extend_cloned<K, E>(&self, k: K, source: impl IntoIterator<Item = A>)
+    fn replace_or_extend_cloned<F, K>(&self, f: F, source: impl IntoIterator<Item = A>)
     where
         A: Clone,
-        K: FnMut(&A) -> E,
-        E: Eq + Hash;
+        F: FnMut(&A) -> K,
+        K: Eq + Hash;
 
     fn signal_vec_filter<P>(&self, p: P) -> Filter<MutableSignalVec<A>, P>
     where
