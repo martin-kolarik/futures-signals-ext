@@ -156,13 +156,13 @@ pub trait MutableVecExt<A> {
     where
         A: Clone;
 
-    fn replace_or_extend<F, K>(&self, f: F, source: impl IntoIterator<Item = A>)
+    fn replace_or_extend<F, K>(&self, f: F, source: impl IntoIterator<Item = A>) -> bool
     where
         A: Copy,
         F: FnMut(&A) -> K,
         K: Eq + Hash;
 
-    fn replace_or_extend_cloned<F, K>(&self, f: F, source: impl IntoIterator<Item = A>)
+    fn replace_or_extend_cloned<F, K>(&self, f: F, source: impl IntoIterator<Item = A>) -> bool
     where
         A: Clone,
         F: FnMut(&A) -> K,
@@ -400,7 +400,7 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         }
     }
 
-    fn replace_or_extend<F, K>(&self, mut f: F, source: impl IntoIterator<Item = A>)
+    fn replace_or_extend<F, K>(&self, mut f: F, source: impl IntoIterator<Item = A>) -> bool
     where
         A: Copy,
         F: FnMut(&A) -> K,
@@ -425,12 +425,16 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         {
             lock.set(index, item)
         }
+
+        let extended = !source.is_empty();
         for (_, item) in source.into_iter() {
             lock.push(item);
         }
+
+        extended
     }
 
-    fn replace_or_extend_cloned<F, K>(&self, mut f: F, source: impl IntoIterator<Item = A>)
+    fn replace_or_extend_cloned<F, K>(&self, mut f: F, source: impl IntoIterator<Item = A>) -> bool
     where
         A: Clone,
         F: FnMut(&A) -> K,
@@ -455,9 +459,13 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         {
             lock.set_cloned(index, item)
         }
+
+        let extended = !source.is_empty();
         for (_, item) in source.into_iter() {
             lock.push_cloned(item);
         }
+
+        extended
     }
 
     fn signal_vec_filter<P>(&self, p: P) -> Filter<MutableSignalVec<A>, P>
