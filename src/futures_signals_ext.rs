@@ -519,10 +519,6 @@ pub trait SignalVecFinalizerExt<A> {
     where
         F: FnMut(&A) -> U;
 
-    fn is_empty(self) -> impl Signal<Item = bool>;
-
-    fn len(self) -> impl Signal<Item = usize>;
-
     fn all<F>(self, f: F) -> impl Signal<Item = bool>
     where
         F: FnMut(&A) -> bool;
@@ -541,14 +537,6 @@ where
         F: FnMut(&A) -> U,
     {
         self.to_signal_map(move |items| items.first().map(&mut f))
-    }
-
-    fn is_empty(self) -> impl Signal<Item = bool> {
-        self.to_signal_map(move |items| items.is_empty())
-    }
-
-    fn len(self) -> impl Signal<Item = usize> {
-        self.to_signal_map(move |items| items.len())
     }
 
     fn all<F>(self, mut f: F) -> impl Signal<Item = bool>
