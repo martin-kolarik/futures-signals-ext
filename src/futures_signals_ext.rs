@@ -506,18 +506,18 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
     }
 }
 
-pub trait SignalVecFinalizerExt<A> {
-    fn first(self) -> impl Signal<Item = Option<A>>
+pub trait SignalVecFinalizerExt: SignalVec {
+    fn first(self) -> impl Signal<Item = Option<Self::Item>>
     where
-        A: Copy,
+        Self::Item: Copy,
         Self: Sized,
     {
         self.first_map(|i| *i)
     }
 
-    fn first_cloned(self) -> impl Signal<Item = Option<A>>
+    fn first_cloned(self) -> impl Signal<Item = Option<Self::Item>>
     where
-        A: Clone,
+        Self::Item: Clone,
         Self: Sized,
     {
         self.first_map(|i| i.clone())
@@ -525,40 +525,54 @@ pub trait SignalVecFinalizerExt<A> {
 
     fn first_map<F, U>(self, f: F) -> impl Signal<Item = Option<U>>
     where
-        F: FnMut(&A) -> U;
+        F: FnMut(&Self::Item) -> U;
 
     fn all<F>(self, f: F) -> impl Signal<Item = bool>
     where
-        F: FnMut(&A) -> bool;
+        F: FnMut(&Self::Item) -> bool;
 
     fn any<F>(self, f: F) -> impl Signal<Item = bool>
     where
-        F: FnMut(&A) -> bool;
+        F: FnMut(&Self::Item) -> bool;
+
+    fn seq(self) -> Sequence<Self>
+    where
+        Self: Sized;
 }
 
-impl<A, S> SignalVecFinalizerExt<A> for S
+impl<S> SignalVecFinalizerExt for S
 where
-    S: SignalVec<Item = A>,
+    S: SignalVec,
 {
     fn first_map<F, U>(self, mut f: F) -> impl Signal<Item = Option<U>>
     where
-        F: FnMut(&A) -> U,
+        F: FnMut(&Self::Item) -> U,
     {
         self.to_signal_map(move |items| items.first().map(&mut f))
     }
 
     fn all<F>(self, mut f: F) -> impl Signal<Item = bool>
     where
-        F: FnMut(&A) -> bool,
+        F: FnMut(&Self::Item) -> bool,
     {
         self.to_signal_map(move |items| items.iter().all(&mut f))
     }
 
     fn any<F>(self, mut f: F) -> impl Signal<Item = bool>
     where
-        F: FnMut(&A) -> bool,
+        F: FnMut(&Self::Item) -> bool,
     {
         self.to_signal_map(move |items| items.iter().any(&mut f))
+    }
+
+    fn seq(self) -> Sequence<Self>
+    where
+        Self: Sized,
+    {
+        Sequence {
+            signal: self,
+            sequence: 0,
+        }
     }
 }
 
@@ -710,7 +724,7 @@ where
 }
 
 pin_project! {
-#[derive(Debug)]
+    #[derive(Debug)]
     #[must_use = "Signals do nothing unless polled"]
     pub struct MapSome<S, T, U, F> {
         #[pin]
@@ -738,7 +752,7 @@ where
 }
 
 pin_project! {
-#[derive(Debug)]
+    #[derive(Debug)]
     #[must_use = "Signals do nothing unless polled"]
     pub struct MapSomeDefault<S, T, U, F> {
         #[pin]
@@ -767,7 +781,7 @@ where
 }
 
 pin_project! {
-#[derive(Debug)]
+    #[derive(Debug)]
     #[must_use = "Signals do nothing unless polled"]
     pub struct AndThenSome<S, T, U, F> {
         #[pin]
@@ -791,5 +805,51 @@ where
             .as_mut()
             .poll_change(cx)
             .map(|opt| opt.map(|opt| opt.and_then(|value| (this.mapper)(&value))))
+    }
+}
+
+pin_project! {
+    #[derive(Debug)]
+    #[must_use = "Signals do nothing unless polled"]
+    pub struct Sequence<A>
+    where
+        A: SignalVec,
+    {
+        #[pin]
+        signal: A,
+        sequence: u64,
+    }
+}
+
+impl<A> Signal for Sequence<A>
+where
+    A: SignalVec,
+{
+    type Item = u64;
+
+    fn poll_change(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
+        let mut this = self.project();
+
+        let mut changed = false;
+
+        let done = loop {
+            break match this.signal.as_mut().poll_vec_change(cx) {
+                Poll::Ready(None) => true,
+                Poll::Ready(Some(_)) => {
+                    *this.sequence += 1;
+                    changed = true;
+                    continue;
+                }
+                Poll::Pending => false,
+            };
+        };
+
+        if changed {
+            Poll::Ready(Some(*this.sequence))
+        } else if done {
+            Poll::Ready(None)
+        } else {
+            Poll::Pending
+        }
     }
 }
