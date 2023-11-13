@@ -106,9 +106,29 @@ pub trait MutableVecExt<A> {
     where
         F: FnMut(&A) -> U;
 
+    fn filter<P>(&self, p: P) -> Vec<A>
+    where
+        A: Copy,
+        P: FnMut(&A) -> bool;
+
+    fn filter_cloned<P>(&self, p: P) -> Vec<A>
+    where
+        A: Clone,
+        P: FnMut(&A) -> bool;
+
     fn filter_map<P, U>(&self, p: P) -> Vec<U>
     where
         P: FnMut(&A) -> Option<U>;
+
+    fn find<P>(&self, p: P) -> Option<A>
+    where
+        A: Copy,
+        P: FnMut(&A) -> bool;
+
+    fn find_cloned<P>(&self, p: P) -> Option<A>
+    where
+        A: Clone,
+        P: FnMut(&A) -> bool;
 
     fn find_map<P, U>(&self, p: P) -> Option<U>
     where
@@ -277,11 +297,43 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         self.lock_ref().iter().map(f).collect()
     }
 
+    fn filter<P>(&self, mut p: P) -> Vec<A>
+    where
+        A: Copy,
+        P: FnMut(&A) -> bool,
+    {
+        self.lock_ref().iter().filter(|&a| p(a)).copied().collect()
+    }
+
+    fn filter_cloned<P>(&self, mut p: P) -> Vec<A>
+    where
+        A: Clone,
+        P: FnMut(&A) -> bool,
+    {
+        self.lock_ref().iter().filter(|&a| p(a)).cloned().collect()
+    }
+
     fn filter_map<P, U>(&self, p: P) -> Vec<U>
     where
         P: FnMut(&A) -> Option<U>,
     {
         self.lock_ref().iter().filter_map(p).collect()
+    }
+
+    fn find<P>(&self, mut p: P) -> Option<A>
+    where
+        A: Copy,
+        P: FnMut(&A) -> bool,
+    {
+        self.lock_ref().iter().find(|&a| p(a)).copied()
+    }
+
+    fn find_cloned<P>(&self, mut p: P) -> Option<A>
+    where
+        A: Clone,
+        P: FnMut(&A) -> bool,
+    {
+        self.lock_ref().iter().find(|&a| p(a)).cloned()
     }
 
     fn find_map<P, U>(&self, p: P) -> Option<U>
