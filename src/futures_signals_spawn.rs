@@ -27,8 +27,6 @@ pub trait SignalVecSpawn<A> {
 }
 
 #[cfg(not(target_os = "unknown"))]
-pub use os::*;
-#[cfg(not(target_os = "unknown"))]
 mod os {
     use std::future::ready;
 
@@ -104,8 +102,6 @@ mod os {
     }
 }
 
-#[cfg(all(target_arch = "wasm32", feature = "spawn-local"))]
-pub use wasm::*;
 #[cfg(all(target_arch = "wasm32", feature = "spawn-local"))]
 mod wasm {
     use std::future::ready;

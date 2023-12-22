@@ -712,29 +712,34 @@ impl<T, S: Signal<Item = bool>, TM: FnMut() -> T> Signal for MapOption<S, TM> {
     }
 }
 
-pub trait SignalExtMapOption<T, U> {
-    fn map_some<F>(self, f: F) -> MapSome<Self, T, U, F>
+pub trait SignalExtMapOption<T> {
+    fn map_some<F, U>(self, f: F) -> MapSome<Self, T, F, U>
     where
         Self: Sized,
         F: FnMut(&T) -> U;
 
-    fn map_some_default<F>(self, f: F) -> MapSomeDefault<Self, T, U, F>
+    fn map_some_default<F, U>(self, f: F) -> MapSomeDefault<Self, T, F, U>
     where
         Self: Sized,
         F: FnMut(&T) -> U,
         U: Default;
 
-    fn and_then_some<F>(self, f: F) -> AndThenSome<Self, T, U, F>
+    fn and_then_some<F, U>(self, f: F) -> AndThenSome<Self, T, F, U>
     where
         Self: Sized,
         F: FnMut(&T) -> Option<U>;
+
+    fn unwrap_or_default(self) -> UnwrapOrDefault<Self, T>
+    where
+        Self: Sized,
+        T: Default;
 }
 
-impl<T, U, S> SignalExtMapOption<T, U> for S
+impl<T, S> SignalExtMapOption<T> for S
 where
     S: Signal<Item = Option<T>>,
 {
-    fn map_some<F>(self, f: F) -> MapSome<Self, T, U, F>
+    fn map_some<F, U>(self, f: F) -> MapSome<Self, T, F, U>
     where
         Self: Sized,
         F: FnMut(&T) -> U,
@@ -747,7 +752,7 @@ where
         }
     }
 
-    fn map_some_default<F>(self, f: F) -> MapSomeDefault<Self, T, U, F>
+    fn map_some_default<F, U>(self, f: F) -> MapSomeDefault<Self, T, F, U>
     where
         Self: Sized,
         F: FnMut(&T) -> U,
@@ -761,7 +766,7 @@ where
         }
     }
 
-    fn and_then_some<F>(self, f: F) -> AndThenSome<Self, T, U, F>
+    fn and_then_some<F, U>(self, f: F) -> AndThenSome<Self, T, F, U>
     where
         Self: Sized,
         F: FnMut(&T) -> Option<U>,
@@ -773,12 +778,23 @@ where
             pu: PhantomData,
         }
     }
+
+    fn unwrap_or_default(self) -> UnwrapOrDefault<Self, T>
+    where
+        Self: Sized,
+        T: Default,
+    {
+        UnwrapOrDefault {
+            signal: self,
+            pt: PhantomData,
+        }
+    }
 }
 
 pin_project! {
     #[derive(Debug)]
     #[must_use = "Signals do nothing unless polled"]
-    pub struct MapSome<S, T, U, F> {
+    pub struct MapSome<S, T, F, U> {
         #[pin]
         signal: S,
         mapper: F,
@@ -787,7 +803,7 @@ pin_project! {
     }
 }
 
-impl<T, U, S, F> Signal for MapSome<S, T, U, F>
+impl<T, S, F, U> Signal for MapSome<S, T, F, U>
 where
     S: Signal<Item = Option<T>>,
     F: FnMut(&T) -> U,
@@ -806,7 +822,7 @@ where
 pin_project! {
     #[derive(Debug)]
     #[must_use = "Signals do nothing unless polled"]
-    pub struct MapSomeDefault<S, T, U, F> {
+    pub struct MapSomeDefault<S, T, F, U> {
         #[pin]
         signal: S,
         mapper: F,
@@ -815,7 +831,7 @@ pin_project! {
     }
 }
 
-impl<T, U, S, F> Signal for MapSomeDefault<S, T, U, F>
+impl<T, S, F, U> Signal for MapSomeDefault<S, T, F, U>
 where
     S: Signal<Item = Option<T>>,
     F: FnMut(&T) -> U,
@@ -835,7 +851,7 @@ where
 pin_project! {
     #[derive(Debug)]
     #[must_use = "Signals do nothing unless polled"]
-    pub struct AndThenSome<S, T, U, F> {
+    pub struct AndThenSome<S, T, F, U> {
         #[pin]
         signal: S,
         mapper: F,
@@ -844,7 +860,7 @@ pin_project! {
     }
 }
 
-impl<T, U, S, F> Signal for AndThenSome<S, T, U, F>
+impl<T, S, F, U> Signal for AndThenSome<S, T, F, U>
 where
     S: Signal<Item = Option<T>>,
     F: FnMut(&T) -> Option<U>,
@@ -857,6 +873,32 @@ where
             .as_mut()
             .poll_change(cx)
             .map(|opt| opt.map(|opt| opt.and_then(|value| (this.mapper)(&value))))
+    }
+}
+
+pin_project! {
+    #[derive(Debug)]
+    #[must_use = "Signals do nothing unless polled"]
+    pub struct UnwrapOrDefault<S, T> {
+        #[pin]
+        signal: S,
+        pt: PhantomData<T>,
+    }
+}
+
+impl<T, S> Signal for UnwrapOrDefault<S, T>
+where
+    S: Signal<Item = Option<T>>,
+    T: Default,
+{
+    type Item = T;
+
+    fn poll_change(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
+        let mut this = self.project();
+        this.signal
+            .as_mut()
+            .poll_change(cx)
+            .map(|opt| opt.map(|opt| opt.unwrap_or_default()))
     }
 }
 
