@@ -70,6 +70,10 @@ impl<T> MutableOption<T> {
         }
     }
 
+    pub fn as_mutable(&self) -> Mutable<Option<T>> {
+        self.0.clone()
+    }
+
     pub fn map<F>(&self, f: impl FnOnce(&T) -> F) -> Option<F> {
         self.0.lock_ref().as_ref().map(f)
     }
