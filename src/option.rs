@@ -28,8 +28,12 @@ impl<T> Deref for MutableOption<T> {
 }
 
 impl<T> MutableOption<T> {
-    pub fn new_empty() -> Self {
-        Self(Mutable::new(None))
+    pub fn new(value: Option<T>) -> Self {
+        Self(Mutable::new(value))
+    }
+
+    pub fn new_some(value: T) -> Self {
+        Self(Mutable::new(Some(value)))
     }
 
     pub fn new_default() -> Self
@@ -37,14 +41,6 @@ impl<T> MutableOption<T> {
         T: Default,
     {
         Self(Mutable::new(Some(T::default())))
-    }
-
-    pub fn new_value(value: Option<T>) -> Self {
-        Self(Mutable::new(value))
-    }
-
-    pub fn new_some_value(value: T) -> Self {
-        Self(Mutable::new(Some(value)))
     }
 
     pub fn is_none(&self) -> bool {
