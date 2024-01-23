@@ -106,6 +106,10 @@ pub trait MutableVecExt<A> {
     where
         F: FnMut(&A) -> U;
 
+    fn enumerate_map<F, U>(&self, f: F) -> Vec<U>
+    where
+        F: FnMut(usize, &A) -> U;
+
     fn filter<P>(&self, p: P) -> Vec<A>
     where
         A: Copy,
@@ -295,6 +299,17 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         F: FnMut(&A) -> U,
     {
         self.lock_ref().iter().map(f).collect()
+    }
+
+    fn enumerate_map<F, U>(&self, mut f: F) -> Vec<U>
+    where
+        F: FnMut(usize, &A) -> U,
+    {
+        self.lock_ref()
+            .iter()
+            .enumerate()
+            .map(|(index, item)| f(index, item))
+            .collect()
     }
 
     fn filter<P>(&self, mut p: P) -> Vec<A>
