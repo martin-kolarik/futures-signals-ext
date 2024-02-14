@@ -4,17 +4,31 @@ All notable changes to this project will be documented in this file. The
 format is based on [Keep a Changelog], and this project aims to follow
 [Semantic Versioning].
 
-## [Unreleased]
+## [0.1.6] - 2024-02-14
 
 ### Added
 
-- TODO sequence added to `MutableVec``
-- `unwrap_or_default` added to `SignalExtMapOption`
+- `MutableVecExt::enumerate_map` added
+
+- `MutableVecExt::find_*` and `filter_*` added
+
+- `SignalExtMapOption::unwrap_or_default` added
+
+- `SignalSpawn::spawn_fut` and `SignalVecSpawn::spawn_fut` added
+
+## [0.1.5] - 2023-10-23
+
+### Added
+
+- `MutableVecExt::find_set_*` and `find_remove` added
+
+- `MutableVecExt::extend_*` and `replace_*` added
+
+- `SignalVecFinalizerExt::is_empty`, `len`, `all` and `any` added
 
 ### Changed
 
-- TODO `MutableOption::empty_if_contains` changed to `MutableOption::take_if_value`
-
+- `SignalVecItemExt` renamed to `SignalVecFirstExt`
 
 ## [0.1.4] - 2023-08-20
 
@@ -23,6 +37,7 @@ format is based on [Keep a Changelog], and this project aims to follow
 - Introduce wasm environment, `wasm-bindgen-futures` used for spawning tasks.
 
 - `MutableOption::empty_if_contains` changed to `MutableOption::take_if_value`
+
 ## [0.1.3] - 2023-08-20
 
 ### Fixed
