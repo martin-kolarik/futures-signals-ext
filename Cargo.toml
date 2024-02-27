@@ -1,6 +1,6 @@
 [package]
 name = "futures-signals-ext"
-version = "0.1.6"
+version = "0.1.7"
 authors = ["martin.kolarik@smartcontrol.cz"]
 description = "Extension to futures-signals: MutableOption with combinators, spawning, predicate driven selections from SignalVec."
 edition = "2021"
@@ -19,7 +19,7 @@ futures-signals = { version = "^0.3", default-features = false }
 pin-project-lite = { version = "^0.2" }
 
 [target.'cfg(not(target_os = "unknown"))'.dependencies]
-async-global-executor = { version = "^2.3", default-features = false, optional = true }
+async-global-executor = { version = "^2.4", default-features = false, optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures = { version = "^0.4", optional = true }

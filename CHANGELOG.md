@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file. The
 format is based on [Keep a Changelog], and this project aims to follow
 [Semantic Versioning].
 
+## [0.1.7] - 2024-02-27
+
+### Changed
+
+- bump up dependencies versions
+
 ## [0.1.6] - 2024-02-14
 
 ### Added
