@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file. The
 format is based on [Keep a Changelog], and this project aims to follow
 [Semantic Versioning].
 
+## [0.1.8] - 2024-02-29
+
+### Changed
+
+- async code moved to artwrap crate
+
 ## [0.1.7] - 2024-02-27
 
 ### Changed

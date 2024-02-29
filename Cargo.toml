@@ -1,6 +1,6 @@
 [package]
 name = "futures-signals-ext"
-version = "0.1.7"
+version = "0.1.8"
 authors = ["martin.kolarik@smartcontrol.cz"]
 description = "Extension to futures-signals: MutableOption with combinators, spawning, predicate driven selections from SignalVec."
 edition = "2021"
@@ -15,6 +15,6 @@ spawn = []
 spawn-local = []
 
 [dependencies]
-artwrap = { git = "https://github.com/martin-kolarik/artwrap.git" }
+artwrap = { version = "^0.1" }
 futures-signals = { version = "^0.3", default-features = false }
 pin-project-lite = { version = "^0.2" }
