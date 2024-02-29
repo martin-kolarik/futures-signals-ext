@@ -75,8 +75,7 @@ mod os {
             F: Fn(A) -> W + Send + 'static,
             W: Future<Output = ()> + Send + 'static,
         {
-            async_global_executor::init();
-            async_global_executor::spawn(self.for_each(move |new| f(new))).detach();
+            artwrap::spawn(self.for_each(move |new| f(new)));
         }
 
         #[cfg(feature = "spawn-local")]
@@ -96,8 +95,7 @@ mod os {
             F: Fn(A) -> W + 'static,
             W: Future<Output = ()> + 'static,
         {
-            async_global_executor::init();
-            async_global_executor::spawn_local(self.for_each(move |new| f(new))).detach();
+            artwrap::spawn_local(self.for_each(move |new| f(new)));
         }
     }
 
@@ -111,12 +109,10 @@ mod os {
             Self: Send,
             F: Fn(VecDiff<A>) + Send + 'static,
         {
-            async_global_executor::init();
-            async_global_executor::spawn(self.for_each(move |new| {
+            artwrap::spawn(self.for_each(move |new| {
                 f(new);
                 ready(())
-            }))
-            .detach();
+            }));
         }
 
         #[cfg(feature = "spawn-local")]
@@ -124,12 +120,10 @@ mod os {
         where
             F: Fn(VecDiff<A>) + 'static,
         {
-            async_global_executor::init();
-            async_global_executor::spawn_local(self.for_each(move |new| {
+            artwrap::spawn_local(self.for_each(move |new| {
                 f(new);
                 ready(())
-            }))
-            .detach();
+            }));
         }
     }
 }
@@ -185,7 +179,7 @@ mod wasm {
             F: Fn(A) -> W + 'static,
             W: Future<Output = ()> + 'static,
         {
-            wasm_bindgen_futures::spawn_local(self.for_each(move |new| f(new)));
+            artwrap::spawn_local(self.for_each(move |new| f(new)));
         }
     }
 
@@ -207,7 +201,7 @@ mod wasm {
         where
             F: Fn(VecDiff<A>) + 'static,
         {
-            wasm_bindgen_futures::spawn_local(self.for_each(move |new| {
+            artwrap::spawn_local(self.for_each(move |new| {
                 f(new);
                 ready(())
             }));
