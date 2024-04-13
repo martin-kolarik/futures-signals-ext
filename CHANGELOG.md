@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file. The
 format is based on [Keep a Changelog], and this project aims to follow
 [Semantic Versioning].
 
+## [0.1.9] - 2024-04-13
+
+### Added
+
+- `MutableVec::replace` added
+
+### Changed
+
+- `MutableVec::replace_or_extend` renamed to `MutableVec::replace_or_extend_keyed`
+
 ## [0.1.8] - 2024-02-29
 
 ### Changed

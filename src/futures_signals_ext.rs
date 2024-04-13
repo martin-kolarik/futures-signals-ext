@@ -180,13 +180,27 @@ pub trait MutableVecExt<A> {
     where
         A: Clone;
 
-    fn replace_or_extend<F, K>(&self, f: F, source: impl IntoIterator<Item = A>) -> bool
+    fn replace<P>(&self, what: P, with: impl IntoIterator<Item = A>)
+    where
+        A: Copy,
+        P: FnMut(&A) -> bool;
+
+    fn replace_cloned<P>(&self, what: P, with: impl IntoIterator<Item = A>)
+    where
+        A: Clone,
+        P: FnMut(&A) -> bool;
+
+    fn replace_or_extend_keyed<F, K>(&self, f: F, source: impl IntoIterator<Item = A>) -> bool
     where
         A: Copy,
         F: FnMut(&A) -> K,
         K: Eq + Hash;
 
-    fn replace_or_extend_cloned<F, K>(&self, f: F, source: impl IntoIterator<Item = A>) -> bool
+    fn replace_or_extend_keyed_cloned<F, K>(
+        &self,
+        f: F,
+        source: impl IntoIterator<Item = A>,
+    ) -> bool
     where
         A: Clone,
         F: FnMut(&A) -> K,
@@ -467,7 +481,31 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         }
     }
 
-    fn replace_or_extend<F, K>(&self, mut f: F, source: impl IntoIterator<Item = A>) -> bool
+    fn replace<P>(&self, mut p: P, with: impl IntoIterator<Item = A>)
+    where
+        A: Copy,
+        P: FnMut(&A) -> bool,
+    {
+        let mut lock = self.lock_mut();
+        lock.retain(|item| !p(item));
+        for item in with.into_iter() {
+            lock.push(item);
+        }
+    }
+
+    fn replace_cloned<P>(&self, mut p: P, with: impl IntoIterator<Item = A>)
+    where
+        A: Clone,
+        P: FnMut(&A) -> bool,
+    {
+        let mut lock = self.lock_mut();
+        lock.retain(|item| !p(item));
+        for item in with.into_iter() {
+            lock.push_cloned(item);
+        }
+    }
+
+    fn replace_or_extend_keyed<F, K>(&self, mut f: F, source: impl IntoIterator<Item = A>) -> bool
     where
         A: Copy,
         F: FnMut(&A) -> K,
@@ -501,7 +539,11 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         extended
     }
 
-    fn replace_or_extend_cloned<F, K>(&self, mut f: F, source: impl IntoIterator<Item = A>) -> bool
+    fn replace_or_extend_keyed_cloned<F, K>(
+        &self,
+        mut f: F,
+        source: impl IntoIterator<Item = A>,
+    ) -> bool
     where
         A: Clone,
         F: FnMut(&A) -> K,
