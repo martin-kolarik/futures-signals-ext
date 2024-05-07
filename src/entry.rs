@@ -134,13 +134,12 @@ impl<'a, V: Copy> Value<'a, V> {
         self.modified
     }
 
-    pub fn set(&mut self, value: V) -> bool {
+    pub fn set(&mut self, value: V) {
         self.value = value;
         self.modified = true;
-        self.modified
     }
 
-    pub fn set_neq(&mut self, value: V) -> bool
+    pub fn set_neq(&mut self, value: V)
     where
         V: PartialEq,
     {
@@ -148,6 +147,9 @@ impl<'a, V: Copy> Value<'a, V> {
             self.value = value;
             self.modified = true;
         }
+    }
+
+    pub fn modified(self) -> bool {
         self.modified
     }
 }
@@ -282,13 +284,12 @@ impl<'a, V: Clone> ValueCloned<'a, V> {
         self.modified
     }
 
-    pub fn set(&mut self, value: V) -> bool {
+    pub fn set(&mut self, value: V) {
         self.value = value;
         self.modified = true;
-        self.modified
     }
 
-    pub fn set_neq(&mut self, value: V) -> bool
+    pub fn set_neq(&mut self, value: V)
     where
         V: PartialEq,
     {
@@ -296,6 +297,9 @@ impl<'a, V: Clone> ValueCloned<'a, V> {
             self.value = value;
             self.modified = true;
         }
+    }
+
+    pub fn modified(self) -> bool {
         self.modified
     }
 }
