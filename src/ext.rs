@@ -7,7 +7,6 @@ use futures_signals::{
 };
 use pin_project_lite::pin_project;
 use std::{
-    cmp,
     collections::HashMap,
     hash::Hash,
     marker::PhantomData,
@@ -15,6 +14,8 @@ use std::{
     pin::Pin,
     task::{Context, Poll},
 };
+
+use crate::MutableVecEntry;
 
 pub trait MutableExt<A> {
     fn inspect(&self, f: impl FnOnce(&A));
@@ -158,18 +159,14 @@ pub trait MutableVecExt<A> {
         A: Clone,
         P: FnMut(&A) -> bool;
 
-    fn find_set_or_insert<O>(&self, o: O, item: A)
-    where
-        A: Copy,
-        O: FnMut(&A) -> cmp::Ordering;
-
-    fn find_set_or_insert_cloned<O>(&self, o: O, item: A)
-    where
-        A: Clone,
-        O: FnMut(&A) -> cmp::Ordering;
-
     fn find_remove<P>(&self, p: P) -> bool
     where
+        A: Copy,
+        P: FnMut(&A) -> bool;
+
+    fn find_remove_cloned<P>(&self, p: P) -> bool
+    where
+        A: Clone,
         P: FnMut(&A) -> bool;
 
     fn extend(&self, source: impl IntoIterator<Item = A>)
@@ -264,21 +261,9 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         P: FnMut(&A) -> bool,
         F: FnOnce(&mut A) -> bool,
     {
-        let mut lock = self.lock_mut();
-        if let Some((index, mut item)) = lock
-            .iter()
-            .position(predicate)
-            .and_then(|index| lock.get(index).map(|item| (index, *item)))
-        {
-            if f(&mut item) {
-                lock.set(index, item);
-                Some(true)
-            } else {
-                Some(false)
-            }
-        } else {
-            None
-        }
+        self.entry(predicate)
+            .value()
+            .map(|mut value| value.inspect_mut(f))
     }
 
     /// Return parameter of F (changed) drives if the value should be written back,
@@ -290,22 +275,9 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         P: FnMut(&A) -> bool,
         F: FnOnce(&mut A) -> bool,
     {
-        let mut lock = self.lock_mut();
-        if let Some((index, item)) = lock
-            .iter()
-            .position(predicate)
-            .and_then(|index| lock.get(index).map(|item| (index, item)))
-        {
-            let mut item = item.clone();
-            if f(&mut item) {
-                lock.set_cloned(index, item);
-                Some(true)
-            } else {
-                Some(false)
-            }
-        } else {
-            None
-        }
+        self.entry_cloned(predicate)
+            .value()
+            .map(|mut value| value.inspect_mut(f))
     }
 
     fn map<F, U>(&self, f: F) -> Vec<U>
@@ -377,13 +349,7 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         A: Copy,
         P: FnMut(&A) -> bool,
     {
-        let mut lock = self.lock_mut();
-        if let Some(index) = lock.iter().position(p) {
-            lock.set(index, item);
-            true
-        } else {
-            false
-        }
+        self.entry(p).and_set(item).is_occupied()
     }
 
     fn find_set_cloned<P>(&self, p: P, item: A) -> bool
@@ -391,13 +357,7 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         A: Clone,
         P: FnMut(&A) -> bool,
     {
-        let mut lock = self.lock_mut();
-        if let Some(index) = lock.iter().position(p) {
-            lock.set_cloned(index, item);
-            true
-        } else {
-            false
-        }
+        self.entry_cloned(p).and_set(item).is_occupied()
     }
 
     fn find_set_or_add<P>(&self, p: P, item: A)
@@ -405,11 +365,7 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         A: Copy,
         P: FnMut(&A) -> bool,
     {
-        let mut lock = self.lock_mut();
-        match lock.iter().position(p) {
-            Some(index) => lock.set(index, item),
-            None => lock.push(item),
-        }
+        self.entry(p).or_insert_entry(item);
     }
 
     fn find_set_or_add_cloned<P>(&self, p: P, item: A)
@@ -417,48 +373,23 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         A: Clone,
         P: FnMut(&A) -> bool,
     {
-        let mut lock = self.lock_mut();
-        match lock.iter().position(p) {
-            Some(index) => lock.set_cloned(index, item),
-            None => lock.push_cloned(item),
-        }
-    }
-
-    fn find_set_or_insert<O>(&self, o: O, item: A)
-    where
-        A: Copy,
-        O: FnMut(&A) -> cmp::Ordering,
-    {
-        let mut lock = self.lock_mut();
-        match lock.binary_search_by(o) {
-            Ok(index) => lock.set(index, item),
-            Err(index) => lock.insert(index, item),
-        }
-    }
-
-    fn find_set_or_insert_cloned<O>(&self, o: O, item: A)
-    where
-        A: Clone,
-        O: FnMut(&A) -> cmp::Ordering,
-    {
-        let mut lock = self.lock_mut();
-        match lock.binary_search_by(o) {
-            Ok(index) => lock.set_cloned(index, item),
-            Err(index) => lock.insert_cloned(index, item),
-        }
+        self.entry_cloned(p).or_insert_entry(item);
     }
 
     fn find_remove<P>(&self, p: P) -> bool
     where
+        A: Copy,
         P: FnMut(&A) -> bool,
     {
-        let mut lock = self.lock_mut();
-        if let Some(index) = lock.iter().position(p) {
-            lock.remove(index);
-            true
-        } else {
-            false
-        }
+        self.entry(p).remove().is_some()
+    }
+
+    fn find_remove_cloned<P>(&self, p: P) -> bool
+    where
+        A: Clone,
+        P: FnMut(&A) -> bool,
+    {
+        self.entry_cloned(p).remove().is_some()
     }
 
     fn extend(&self, source: impl IntoIterator<Item = A>)

@@ -1,10 +1,15 @@
-#[cfg(any(feature = "spawn", feature = "spawn-local"))]
-mod futures_signals_spawn;
-#[cfg(any(feature = "spawn", feature = "spawn-local"))]
-pub use futures_signals_spawn::*;
+#![feature(let_chains)]
 
-mod futures_signals_ext;
-pub use futures_signals_ext::*;
+#[cfg(any(feature = "spawn", feature = "spawn-local"))]
+mod spawn;
+#[cfg(any(feature = "spawn", feature = "spawn-local"))]
+pub use spawn::*;
+
+mod entry;
+pub use entry::*;
+
+mod ext;
+pub use ext::*;
 
 #[cfg(feature = "option")]
 mod option;
