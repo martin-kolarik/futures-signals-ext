@@ -48,7 +48,7 @@ impl<'a, V: Copy> Entry<'a, V> {
             Some(key) => {
                 let mut existing = self.existing(key);
                 f(&mut existing);
-                existing.entry.take().unwrap()
+                existing.return_lease()
             }
             None => self,
         }
@@ -99,16 +99,6 @@ pub struct Value<'a, V: Copy> {
     modified: bool,
 }
 
-impl<'a, V: Copy> Drop for Value<'a, V> {
-    fn drop(&mut self) {
-        if self.modified
-            && let Some(mut entry) = self.entry.take()
-        {
-            entry.set(self.value);
-        }
-    }
-}
-
 impl<'a, V: Copy> Value<'a, V> {
     fn new(entry: Entry<'a, V>, value: V) -> Self {
         Self {
@@ -152,6 +142,14 @@ impl<'a, V: Copy> Value<'a, V> {
     pub fn modified(self) -> bool {
         self.modified
     }
+
+    fn return_lease(mut self) -> Entry<'a, V> {
+        let mut entry = self.entry.take().unwrap();
+        if self.modified {
+            entry.set(self.value);
+        }
+        entry
+    }
 }
 
 impl<'a, V: Copy> Deref for Value<'a, V> {
@@ -159,6 +157,16 @@ impl<'a, V: Copy> Deref for Value<'a, V> {
 
     fn deref(&self) -> &V {
         &self.value
+    }
+}
+
+impl<'a, V: Copy> Drop for Value<'a, V> {
+    fn drop(&mut self) {
+        if self.modified
+            && let Some(mut entry) = self.entry.take()
+        {
+            entry.set(self.value);
+        }
     }
 }
 
@@ -208,7 +216,7 @@ impl<'a, V: Clone> EntryCloned<'a, V> {
             Some(key) => {
                 let mut existing = self.existing(key);
                 f(&mut existing);
-                existing.entry.take().unwrap()
+                existing.return_lease()
             }
             None => self,
         }
@@ -301,6 +309,14 @@ impl<'a, V: Clone> ValueCloned<'a, V> {
 
     pub fn modified(self) -> bool {
         self.modified
+    }
+
+    fn return_lease(mut self) -> EntryCloned<'a, V> {
+        let mut entry = self.entry.take().unwrap();
+        if self.modified {
+            entry.set(self.value.clone());
+        }
+        entry
     }
 }
 
