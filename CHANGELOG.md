@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file. The
 format is based on [Keep a Changelog], and this project aims to follow
 [Semantic Versioning].
 
+## [0.4.0] - 2024-05-07
+
+### Changed
+
+- `return_lease` renamed to `commit`
+
 ## [0.2.0] - 2024-05-07
 
 ### Added

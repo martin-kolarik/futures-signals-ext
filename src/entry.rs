@@ -48,7 +48,7 @@ impl<'a, V: Copy> Entry<'a, V> {
             Some(key) => {
                 let mut existing = self.existing(key);
                 f(&mut existing);
-                existing.return_lease()
+                existing.commit()
             }
             None => self,
         }
@@ -143,7 +143,7 @@ impl<'a, V: Copy> Value<'a, V> {
         self.modified
     }
 
-    fn return_lease(mut self) -> Entry<'a, V> {
+    fn commit(mut self) -> Entry<'a, V> {
         let mut entry = self.entry.take().unwrap();
         if self.modified {
             entry.set(self.value);
@@ -216,7 +216,7 @@ impl<'a, V: Clone> EntryCloned<'a, V> {
             Some(key) => {
                 let mut existing = self.existing(key);
                 f(&mut existing);
-                existing.return_lease()
+                existing.commit()
             }
             None => self,
         }
@@ -311,7 +311,7 @@ impl<'a, V: Clone> ValueCloned<'a, V> {
         self.modified
     }
 
-    fn return_lease(mut self) -> EntryCloned<'a, V> {
+    fn commit(mut self) -> EntryCloned<'a, V> {
         let mut entry = self.entry.take().unwrap();
         if self.modified {
             entry.set(self.value.clone());
