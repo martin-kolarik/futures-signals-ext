@@ -96,42 +96,49 @@ impl<T> MutableOption<T> {
         self.0.lock_ref().as_ref().and_then(f)
     }
 
-    pub fn signal_some_default(&self) -> impl Signal<Item = T>
+    pub fn signal_some_default(&self) -> impl Signal<Item = T> + use<T>
     where
         T: Default + Copy,
     {
         self.signal_map_some_default(|v| *v)
     }
 
-    pub fn signal_cloned_some_default(&self) -> impl Signal<Item = T>
+    pub fn signal_cloned_some_default(&self) -> impl Signal<Item = T> + use<T>
     where
         T: Default + Clone,
     {
         self.signal_map_some_default(|v| v.clone())
     }
 
-    pub fn signal_map<F, U>(&self, mut f: F) -> impl Signal<Item = Option<U>>
+    pub fn signal_map<F, U>(&self, mut f: F) -> impl Signal<Item = Option<U>> + use<T, F, U>
     where
         F: FnMut(Option<&T>) -> Option<U>,
     {
         self.0.signal_ref(move |v| f(v.as_ref()))
     }
 
-    pub fn signal_map_some<F, U>(&self, mut f: F) -> impl Signal<Item = Option<U>>
+    pub fn signal_map_some<F, U>(&self, mut f: F) -> impl Signal<Item = Option<U>> + use<T, F, U>
     where
         F: FnMut(&T) -> U,
     {
         self.0.signal_ref(move |v| v.as_ref().map(&mut f))
     }
 
-    pub fn signal_and_then_some<F, U>(&self, mut f: F) -> impl Signal<Item = Option<U>>
+    pub fn signal_and_then_some<F, U>(
+        &self,
+        mut f: F,
+    ) -> impl Signal<Item = Option<U>> + use<T, F, U>
     where
         F: FnMut(&T) -> Option<U>,
     {
         self.0.signal_ref(move |v| v.as_ref().and_then(&mut f))
     }
 
-    pub fn signal_and_then_some_or<F, U>(&self, mut f: F, default: U) -> impl Signal<Item = U>
+    pub fn signal_and_then_some_or<F, U>(
+        &self,
+        mut f: F,
+        default: U,
+    ) -> impl Signal<Item = U> + use<T, F, U>
     where
         F: FnMut(&T) -> Option<U>,
         U: Clone,
@@ -147,7 +154,7 @@ impl<T> MutableOption<T> {
         &self,
         mut f: F,
         default: D,
-    ) -> impl Signal<Item = U>
+    ) -> impl Signal<Item = U> + use<T, F, D, U>
     where
         F: FnMut(&T) -> Option<U>,
         D: FnOnce() -> U + Clone,
@@ -156,7 +163,11 @@ impl<T> MutableOption<T> {
             .signal_ref(move |v| v.as_ref().and_then(&mut f).unwrap_or_else(default.clone()))
     }
 
-    pub fn signal_map_some_or<F, U>(&self, mut f: F, default: U) -> impl Signal<Item = U>
+    pub fn signal_map_some_or<F, U>(
+        &self,
+        mut f: F,
+        default: U,
+    ) -> impl Signal<Item = U> + use<T, F, U>
     where
         F: FnMut(&T) -> U,
         U: Clone,
@@ -165,7 +176,11 @@ impl<T> MutableOption<T> {
             .signal_ref(move |v| v.as_ref().map(&mut f).unwrap_or(default.clone()))
     }
 
-    pub fn signal_map_some_or_else<F, D, U>(&self, mut f: F, default: D) -> impl Signal<Item = U>
+    pub fn signal_map_some_or_else<F, D, U>(
+        &self,
+        mut f: F,
+        default: D,
+    ) -> impl Signal<Item = U> + use<T, F, D, U>
     where
         F: FnMut(&T) -> U,
         D: FnOnce() -> U + Clone,
@@ -174,7 +189,7 @@ impl<T> MutableOption<T> {
             .signal_ref(move |v| v.as_ref().map(&mut f).unwrap_or_else(default.clone()))
     }
 
-    pub fn signal_map_some_default<F, U>(&self, mut f: F) -> impl Signal<Item = U>
+    pub fn signal_map_some_default<F, U>(&self, mut f: F) -> impl Signal<Item = U> + use<T, F, U>
     where
         F: FnMut(&T) -> U,
         U: Default,

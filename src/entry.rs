@@ -133,7 +133,7 @@ impl<'a, V: Copy> Value<'a, V> {
     where
         V: PartialEq,
     {
-        if &self.value != &value {
+        if self.value != value {
             self.value = value;
             self.modified = true;
         }
@@ -152,7 +152,7 @@ impl<'a, V: Copy> Value<'a, V> {
     }
 }
 
-impl<'a, V: Copy> Deref for Value<'a, V> {
+impl<V: Copy> Deref for Value<'_, V> {
     type Target = V;
 
     fn deref(&self) -> &V {
@@ -160,7 +160,7 @@ impl<'a, V: Copy> Deref for Value<'a, V> {
     }
 }
 
-impl<'a, V: Copy> Drop for Value<'a, V> {
+impl<V: Copy> Drop for Value<'_, V> {
     fn drop(&mut self) {
         if self.modified
             && let Some(mut entry) = self.entry.take()
@@ -301,7 +301,7 @@ impl<'a, V: Clone> ValueCloned<'a, V> {
     where
         V: PartialEq,
     {
-        if &self.value != &value {
+        if self.value != value {
             self.value = value;
             self.modified = true;
         }
@@ -320,7 +320,7 @@ impl<'a, V: Clone> ValueCloned<'a, V> {
     }
 }
 
-impl<'a, V: Clone> Deref for ValueCloned<'a, V> {
+impl<V: Clone> Deref for ValueCloned<'_, V> {
     type Target = V;
 
     fn deref(&self) -> &V {
@@ -328,7 +328,7 @@ impl<'a, V: Clone> Deref for ValueCloned<'a, V> {
     }
 }
 
-impl<'a, V: Clone> Drop for ValueCloned<'a, V> {
+impl<V: Clone> Drop for ValueCloned<'_, V> {
     fn drop(&mut self) {
         if self.modified
             && let Some(mut entry) = self.entry.take()
@@ -339,17 +339,17 @@ impl<'a, V: Clone> Drop for ValueCloned<'a, V> {
 }
 
 pub trait MutableVecEntry<V> {
-    fn entry<'a, F>(&'a self, f: F) -> Entry<'a, V>
+    fn entry<F>(&self, f: F) -> Entry<V>
     where
         F: FnMut(&V) -> bool;
 
-    fn entry_cloned<'a, F>(&'a self, f: F) -> EntryCloned<'a, V>
+    fn entry_cloned<F>(&self, f: F) -> EntryCloned<V>
     where
         F: FnMut(&V) -> bool;
 }
 
 impl<V> MutableVecEntry<V> for MutableVec<V> {
-    fn entry<'a, F>(&'a self, f: F) -> Entry<'a, V>
+    fn entry<F>(&self, f: F) -> Entry<V>
     where
         F: FnMut(&V) -> bool,
     {
@@ -358,7 +358,7 @@ impl<V> MutableVecEntry<V> for MutableVec<V> {
         Entry { key, lock }
     }
 
-    fn entry_cloned<'a, F>(&'a self, f: F) -> EntryCloned<'a, V>
+    fn entry_cloned<F>(&self, f: F) -> EntryCloned<V>
     where
         F: FnMut(&V) -> bool,
     {

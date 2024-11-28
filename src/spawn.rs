@@ -43,7 +43,7 @@ pub trait SignalVecSpawn<A> {
 
 #[cfg(not(target_os = "unknown"))]
 mod os {
-    use std::future::{ready, Future};
+    use std::future::{Future, ready};
 
     use futures_signals::{
         signal::{Signal, SignalExt},
@@ -95,7 +95,7 @@ mod os {
             F: Fn(A) -> W + 'static,
             W: Future<Output = ()> + 'static,
         {
-            artwrap::spawn_local(self.for_each(move |new| f(new)));
+            artwrap::spawn_local(self.for_each(f));
         }
     }
 
@@ -130,7 +130,7 @@ mod os {
 
 #[cfg(all(target_arch = "wasm32", feature = "spawn-local"))]
 mod wasm {
-    use std::future::{ready, Future};
+    use std::future::{Future, ready};
 
     use futures_signals::{
         signal::{Signal, SignalExt},
