@@ -4,11 +4,11 @@ All notable changes to this project will be documented in this file. The
 format is based on [Keep a Changelog], and this project aims to follow
 [Semantic Versioning].
 
-## [0.5.1] - 2025-01-11
+## [0.5.2] - 2025-01-11
 
 ### Added
 
-- `feed` and `feed_cloned` added to `MutableVecExt`
+- `feed` and `feed_cloned` added to `MutableVecExt` and `SignalVecSpawn`
 
 ## [0.4.0] - 2024-05-07
 

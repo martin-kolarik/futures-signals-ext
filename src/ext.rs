@@ -203,11 +203,23 @@ pub trait MutableVecExt<A> {
         F: FnMut(&A) -> K,
         K: Eq + Hash;
 
+    #[cfg(feature = "spawn")]
     fn feed(&self, source: impl SignalVec<Item = A> + 'static)
     where
         A: Copy + 'static;
 
+    #[cfg(feature = "spawn")]
     fn feed_cloned(&self, source: impl SignalVec<Item = A> + 'static)
+    where
+        A: Clone + 'static;
+
+    #[cfg(feature = "spawn-local")]
+    fn feed_local(&self, source: impl SignalVec<Item = A> + 'static)
+    where
+        A: Copy + 'static;
+
+    #[cfg(feature = "spawn-local")]
+    fn feed_local_cloned(&self, source: impl SignalVec<Item = A> + 'static)
     where
         A: Clone + 'static;
 
@@ -516,24 +528,36 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         extended
     }
 
+    #[cfg(feature = "spawn")]
     fn feed(&self, source: impl SignalVec<Item = A> + 'static)
     where
         A: Copy + 'static,
     {
-        let this = self.clone();
-        source.spawn_local(move |diff| {
-            MutableVecLockMut::apply_vec_diff(&mut this.lock_mut(), diff);
-        });
+        source.feed(self.clone());
     }
 
+    #[cfg(feature = "spawn")]
     fn feed_cloned(&self, source: impl SignalVec<Item = A> + 'static)
     where
         A: Clone + 'static,
     {
-        let this = self.clone();
-        source.spawn_local(move |diff| {
-            MutableVecLockMut::apply_vec_diff(&mut this.lock_mut(), diff);
-        });
+        source.feed_cloned(self.clone());
+    }
+
+    #[cfg(feature = "spawn-local")]
+    fn feed_local(&self, source: impl SignalVec<Item = A> + 'static)
+    where
+        A: Copy + 'static,
+    {
+        source.feed_local(self.clone());
+    }
+
+    #[cfg(feature = "spawn-local")]
+    fn feed_local_cloned(&self, source: impl SignalVec<Item = A> + 'static)
+    where
+        A: Clone + 'static,
+    {
+        source.feed_local_cloned(self.clone());
     }
 
     fn signal_vec_filter<P>(&self, p: P) -> Filter<MutableSignalVec<A>, P>

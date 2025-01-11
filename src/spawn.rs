@@ -1,6 +1,6 @@
 use std::future::Future;
 
-use futures_signals::signal_vec::VecDiff;
+use futures_signals::signal_vec::{MutableVec, MutableVecLockMut, VecDiff};
 
 pub trait SignalSpawn<A> {
     #[cfg(feature = "spawn")]
@@ -35,10 +35,54 @@ pub trait SignalVecSpawn<A> {
         Self: Send,
         F: Fn(VecDiff<A>) + Send + 'static;
 
+    #[cfg(feature = "spawn")]
+    fn feed(self, target: MutableVec<A>)
+    where
+        Self: Send,
+        A: Copy + 'static,
+    {
+        self.spawn(move |diff| {
+            MutableVecLockMut::apply_vec_diff(&mut target.lock_mut(), diff);
+        });
+    }
+
+    #[cfg(feature = "spawn")]
+    fn feed_cloned(self, target: MutableVec<A>)
+    where
+        Self: Send,
+        A: Cloned + 'static,
+    {
+        self.spawn(move |diff| {
+            MutableVecLockMut::apply_vec_diff(&mut target.lock_mut(), diff);
+        });
+    }
+
     #[cfg(feature = "spawn-local")]
     fn spawn_local<F>(self, f: F)
     where
         F: Fn(VecDiff<A>) + 'static;
+
+    #[cfg(feature = "spawn-local")]
+    fn feed_local(self, target: MutableVec<A>)
+    where
+        Self: Sized,
+        A: Copy + 'static,
+    {
+        self.spawn_local(move |diff| {
+            MutableVecLockMut::apply_vec_diff(&mut target.lock_mut(), diff);
+        });
+    }
+
+    #[cfg(feature = "spawn-local")]
+    fn feed_local_cloned(self, target: MutableVec<A>)
+    where
+        Self: Sized,
+        A: Clone + 'static,
+    {
+        self.spawn_local(move |diff| {
+            MutableVecLockMut::apply_vec_diff(&mut target.lock_mut(), diff);
+        });
+    }
 }
 
 #[cfg(not(target_os = "unknown"))]
@@ -149,7 +193,7 @@ mod wasm {
             Self: Send,
             F: Fn(A) + Send + 'static,
         {
-            unimplemented!()
+            const { unimplemented!() }
         }
 
         #[cfg(feature = "spawn")]
@@ -159,7 +203,7 @@ mod wasm {
             F: Fn(A) -> W + Send + 'static,
             W: Future<Output = ()> + Send + 'static,
         {
-            unimplemented!()
+            const { unimplemented!() }
         }
 
         #[cfg(feature = "spawn-local")]
@@ -193,7 +237,7 @@ mod wasm {
             Self: Send,
             F: Fn(VecDiff<A>) + Send + 'static,
         {
-            unimplemented!()
+            const { unimplemented!() }
         }
 
         #[cfg(feature = "spawn-local")]
