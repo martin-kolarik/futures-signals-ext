@@ -15,7 +15,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use crate::MutableVecEntry;
+use crate::{MutableVecEntry, SignalVecSpawn};
 
 pub trait MutableExt<A> {
     fn inspect(&self, f: impl FnOnce(&A));
@@ -202,6 +202,14 @@ pub trait MutableVecExt<A> {
         A: Clone,
         F: FnMut(&A) -> K,
         K: Eq + Hash;
+
+    fn feed(&self, source: impl SignalVec<Item = A> + 'static)
+    where
+        A: Copy + 'static;
+
+    fn feed_cloned(&self, source: impl SignalVec<Item = A> + 'static)
+    where
+        A: Clone + 'static;
 
     fn signal_vec_filter<P>(&self, p: P) -> Filter<MutableSignalVec<A>, P>
     where
@@ -506,6 +514,26 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         }
 
         extended
+    }
+
+    fn feed(&self, source: impl SignalVec<Item = A> + 'static)
+    where
+        A: Copy + 'static,
+    {
+        let this = self.clone();
+        source.spawn_local(move |diff| {
+            MutableVecLockMut::apply_vec_diff(&mut this.lock_mut(), diff);
+        });
+    }
+
+    fn feed_cloned(&self, source: impl SignalVec<Item = A> + 'static)
+    where
+        A: Clone + 'static,
+    {
+        let this = self.clone();
+        source.spawn_local(move |diff| {
+            MutableVecLockMut::apply_vec_diff(&mut this.lock_mut(), diff);
+        });
     }
 
     fn signal_vec_filter<P>(&self, p: P) -> Filter<MutableSignalVec<A>, P>
