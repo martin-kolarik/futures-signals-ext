@@ -204,14 +204,14 @@ pub trait MutableVecExt<A> {
         K: Eq + Hash;
 
     #[cfg(feature = "spawn")]
-    fn feed(&self, source: impl SignalVec<Item = A> + 'static)
+    fn feed(&self, source: impl SignalVec<Item = A> + Send + 'static)
     where
-        A: Copy + 'static;
+        A: Copy + Send + Sync + 'static;
 
     #[cfg(feature = "spawn")]
-    fn feed_cloned(&self, source: impl SignalVec<Item = A> + 'static)
+    fn feed_cloned(&self, source: impl SignalVec<Item = A> + Send + 'static)
     where
-        A: Clone + 'static;
+        A: Clone + Send + Sync + 'static;
 
     #[cfg(feature = "spawn-local")]
     fn feed_local(&self, source: impl SignalVec<Item = A> + 'static)
@@ -529,17 +529,17 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
     }
 
     #[cfg(feature = "spawn")]
-    fn feed(&self, source: impl SignalVec<Item = A> + 'static)
+    fn feed(&self, source: impl SignalVec<Item = A> + Send + 'static)
     where
-        A: Copy + 'static,
+        A: Copy + Send + Sync + 'static,
     {
         source.feed(self.clone());
     }
 
     #[cfg(feature = "spawn")]
-    fn feed_cloned(&self, source: impl SignalVec<Item = A> + 'static)
+    fn feed_cloned(&self, source: impl SignalVec<Item = A> + Send + 'static)
     where
-        A: Clone + 'static,
+        A: Clone + Send + Sync + 'static,
     {
         source.feed_cloned(self.clone());
     }

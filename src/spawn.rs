@@ -38,8 +38,8 @@ pub trait SignalVecSpawn<A> {
     #[cfg(feature = "spawn")]
     fn feed(self, target: MutableVec<A>)
     where
-        Self: Send,
-        A: Copy + 'static,
+        Self: Sized + Send,
+        A: Copy + Send + Sync + 'static,
     {
         self.spawn(move |diff| {
             MutableVecLockMut::apply_vec_diff(&mut target.lock_mut(), diff);
@@ -49,8 +49,8 @@ pub trait SignalVecSpawn<A> {
     #[cfg(feature = "spawn")]
     fn feed_cloned(self, target: MutableVec<A>)
     where
-        Self: Send,
-        A: Cloned + 'static,
+        Self: Sized + Send,
+        A: Clone + Send + Sync + 'static,
     {
         self.spawn(move |diff| {
             MutableVecLockMut::apply_vec_diff(&mut target.lock_mut(), diff);
@@ -197,7 +197,7 @@ mod wasm {
         }
 
         #[cfg(feature = "spawn")]
-        fn spawn_fut<F, W>(self, f: F)
+        fn spawn_fut<F, W>(self, _: F)
         where
             Self: Send,
             F: Fn(A) -> W + Send + 'static,
