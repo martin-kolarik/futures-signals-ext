@@ -7,7 +7,7 @@ use futures_signals::{
 };
 use pin_project_lite::pin_project;
 use std::{
-    collections::HashMap,
+    collections::{HashMap, VecDeque},
     hash::Hash,
     marker::PhantomData,
     mem,
@@ -15,7 +15,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use crate::{MutableVecEntry, SignalVecSpawn};
+use crate::{Flatten, MutableVecEntry, SignalVecSpawn};
 
 pub trait MutableExt<A> {
     fn inspect(&self, f: impl FnOnce(&A));
@@ -598,11 +598,10 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
     }
 }
 
-pub trait SignalVecFinalizerExt: SignalVec {
+pub trait SignalVecFinalizerExt: SignalVec + Sized {
     fn first(self) -> impl Signal<Item = Option<Self::Item>>
     where
         Self::Item: Copy,
-        Self: Sized,
     {
         self.first_map(|i| *i)
     }
@@ -610,32 +609,10 @@ pub trait SignalVecFinalizerExt: SignalVec {
     fn first_cloned(self) -> impl Signal<Item = Option<Self::Item>>
     where
         Self::Item: Clone,
-        Self: Sized,
     {
         self.first_map(|i| i.clone())
     }
 
-    fn first_map<F, U>(self, f: F) -> impl Signal<Item = Option<U>>
-    where
-        F: FnMut(&Self::Item) -> U;
-
-    fn all<F>(self, f: F) -> impl Signal<Item = bool>
-    where
-        F: FnMut(&Self::Item) -> bool;
-
-    fn any<F>(self, f: F) -> impl Signal<Item = bool>
-    where
-        F: FnMut(&Self::Item) -> bool;
-
-    fn seq(self) -> Sequence<Self>
-    where
-        Self: Sized;
-}
-
-impl<S> SignalVecFinalizerExt for S
-where
-    S: SignalVec,
-{
     fn first_map<F, U>(self, mut f: F) -> impl Signal<Item = Option<U>>
     where
         F: FnMut(&Self::Item) -> U,
@@ -657,10 +634,7 @@ where
         self.to_signal_map(move |items| items.iter().any(&mut f))
     }
 
-    fn seq(self) -> Sequence<Self>
-    where
-        Self: Sized,
-    {
+    fn seq(self) -> Sequence<Self> {
         Sequence {
             signal: self,
             sequence: 0,
@@ -668,21 +642,32 @@ where
     }
 }
 
-pub trait SignalExtMapBool {
-    fn map_bool<T, TM: FnMut() -> T, FM: FnMut() -> T>(self, t: TM, f: FM) -> MapBool<Self, TM, FM>
-    where
-        Self: Sized;
+impl<S: SignalVec + Sized> SignalVecFinalizerExt for S {}
 
-    fn map_option<T, TM: FnMut() -> T>(self, t: TM) -> MapOption<Self, TM>
+pub trait SignalVecFlattenExt: SignalVec + Sized {
+    fn flatten_ext(self) -> Flatten<Self>
     where
-        Self: Sized;
+        Self::Item: SignalVec,
+    {
+        Flatten {
+            signal: Some(self),
+            inner: vec![],
+            pending: VecDeque::new(),
+        }
+    }
 }
 
-impl<S: Signal<Item = bool>> SignalExtMapBool for S {
-    fn map_bool<T, TM: FnMut() -> T, FM: FnMut() -> T>(self, t: TM, f: FM) -> MapBool<Self, TM, FM>
-    where
-        Self: Sized,
-    {
+impl<S: SignalVec + Sized> SignalVecFlattenExt for S {}
+
+pub trait SignalExtMapBool
+where
+    Self: Sized,
+{
+    fn map_bool<T, TM: FnMut() -> T, FM: FnMut() -> T>(
+        self,
+        t: TM,
+        f: FM,
+    ) -> MapBool<Self, TM, FM> {
         MapBool {
             signal: self,
             true_mapper: t,
@@ -690,16 +675,15 @@ impl<S: Signal<Item = bool>> SignalExtMapBool for S {
         }
     }
 
-    fn map_option<T, TM: FnMut() -> T>(self, t: TM) -> MapOption<Self, TM>
-    where
-        Self: Sized,
-    {
+    fn map_option<T, TM: FnMut() -> T>(self, t: TM) -> MapOption<Self, TM> {
         MapOption {
             signal: self,
             true_mapper: t,
         }
     }
 }
+
+impl<S: Signal<Item = bool> + Sized> SignalExtMapBool for S {}
 
 pin_project! {
     #[derive(Debug)]
@@ -752,36 +736,12 @@ impl<T, S: Signal<Item = bool>, TM: FnMut() -> T> Signal for MapOption<S, TM> {
     }
 }
 
-pub trait SignalExtMapOption<T> {
-    fn map_some<F, U>(self, f: F) -> MapSome<Self, T, F, U>
-    where
-        Self: Sized,
-        F: FnMut(&T) -> U;
-
-    fn map_some_default<F, U>(self, f: F) -> MapSomeDefault<Self, T, F, U>
-    where
-        Self: Sized,
-        F: FnMut(&T) -> U,
-        U: Default;
-
-    fn and_then_some<F, U>(self, f: F) -> AndThenSome<Self, T, F, U>
-    where
-        Self: Sized,
-        F: FnMut(&T) -> Option<U>;
-
-    fn unwrap_or_default(self) -> UnwrapOrDefault<Self, T>
-    where
-        Self: Sized,
-        T: Default;
-}
-
-impl<T, S> SignalExtMapOption<T> for S
+pub trait SignalExtMapOption<T>
 where
-    S: Signal<Item = Option<T>>,
+    Self: Sized,
 {
     fn map_some<F, U>(self, f: F) -> MapSome<Self, T, F, U>
     where
-        Self: Sized,
         F: FnMut(&T) -> U,
     {
         MapSome {
@@ -794,7 +754,6 @@ where
 
     fn map_some_default<F, U>(self, f: F) -> MapSomeDefault<Self, T, F, U>
     where
-        Self: Sized,
         F: FnMut(&T) -> U,
         U: Default,
     {
@@ -808,7 +767,6 @@ where
 
     fn and_then_some<F, U>(self, f: F) -> AndThenSome<Self, T, F, U>
     where
-        Self: Sized,
         F: FnMut(&T) -> Option<U>,
     {
         AndThenSome {
@@ -821,7 +779,6 @@ where
 
     fn unwrap_or_default(self) -> UnwrapOrDefault<Self, T>
     where
-        Self: Sized,
         T: Default,
     {
         UnwrapOrDefault {
@@ -830,6 +787,8 @@ where
         }
     }
 }
+
+impl<T, S: Signal<Item = Option<T>> + Sized> SignalExtMapOption<T> for S {}
 
 pin_project! {
     #[derive(Debug)]

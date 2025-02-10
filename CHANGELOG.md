@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file. The
 format is based on [Keep a Changelog], and this project aims to follow
 [Semantic Versioning].
 
+## [0.6.0] - 2025-02-10
+
+### Added
+
+- `flatten_ext` added to `SignalVec`
+
+### Changed
+
+- `Sized` bounds on ext interfaces modified
+
 ## [0.5.3] - 2025-01-11
 
 ### Added

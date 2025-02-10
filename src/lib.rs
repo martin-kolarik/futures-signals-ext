@@ -11,6 +11,9 @@ pub use entry::*;
 mod ext;
 pub use ext::*;
 
+mod flatten;
+pub use flatten::*;
+
 #[cfg(feature = "option")]
 mod option;
 #[cfg(feature = "option")]
