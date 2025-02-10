@@ -17,4 +17,5 @@ spawn-local = []
 [dependencies]
 artwrap = { version = "^0.2" }
 futures-signals = { version = "^0.3", default-features = false }
+log = { version = "^0.4" }
 pin-project-lite = { version = "^0.2" }

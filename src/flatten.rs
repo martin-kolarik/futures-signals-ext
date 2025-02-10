@@ -242,6 +242,7 @@ where
                 Some(Poll::Ready(Some(diff))) => {
                     match diff {
                         VecDiff::Replace { values } => {
+                            log::error!("diff: Replace");
                             *this.inner = values.into_iter().map(FlattenState::new).collect();
 
                             let values = this
@@ -253,13 +254,16 @@ where
                             return Poll::Ready(Some(VecDiff::Replace { values }));
                         }
                         VecDiff::InsertAt { index, value } => {
+                            log::error!("diff: InsertAt {index}");
                             this.inner.insert(index, FlattenState::new(value));
                         }
                         VecDiff::UpdateAt { index, value } => {
+                            log::error!("diff: UpdateAt {index}");
                             fill_removals(&this.inner, index, &mut pending);
                             this.inner[index] = FlattenState::new(value);
                         }
                         VecDiff::RemoveAt { index } => {
+                            log::error!("diff: RemoveAt {index}");
                             fill_removals(&this.inner, index, &mut pending);
                             this.inner.remove(index);
                         }
@@ -274,6 +278,7 @@ where
                             }
                         }
                         VecDiff::Push { value } => {
+                            log::error!("diff: Push");
                             this.inner.push(FlattenState::new(value));
                         }
                         VecDiff::Pop {} => {
@@ -281,6 +286,7 @@ where
                             (0..len).for_each(|_| pending.push(VecDiff::Pop {}));
                         }
                         VecDiff::Clear {} => {
+                            log::error!("diff: Push");
                             this.inner.clear();
                             return Poll::Ready(Some(VecDiff::Clear {}));
                         }
