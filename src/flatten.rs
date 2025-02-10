@@ -84,7 +84,7 @@ where
 
                     match diff {
                         VecDiff::Replace { values } => {
-                            for index in 0..old_len {
+                            for index in (0..old_len).rev() {
                                 pending.push(VecDiff::RemoveAt {
                                     index: prev_len + index,
                                 });
@@ -135,7 +135,7 @@ where
                             });
                         }
                         VecDiff::Clear {} => {
-                            for index in 0..old_len {
+                            for index in (0..old_len).rev() {
                                 pending.push(VecDiff::RemoveAt {
                                     index: prev_len + index,
                                 });
@@ -286,7 +286,7 @@ where
                         }
                     }
 
-                    false
+                    continue;
                 }
                 Some(Poll::Ready(None)) => {
                     this.signal.set(None);
@@ -300,9 +300,7 @@ where
         let mut inner_done = true;
         let mut prev_len = 0;
         for state in this.inner.iter_mut() {
-            let done = state.poll_pending(cx, prev_len, &mut pending);
-
-            inner_done &= done;
+            inner_done &= state.poll_pending(cx, prev_len, &mut pending);
             prev_len += state.len;
         }
 
