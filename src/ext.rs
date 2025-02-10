@@ -810,9 +810,8 @@ where
     type Item = Option<U>;
 
     fn poll_change(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
-        let mut this = self.project();
+        let this = self.project();
         this.signal
-            .as_mut()
             .poll_change(cx)
             .map(|opt| opt.map(|opt| opt.map(|value| (this.mapper)(&value))))
     }
@@ -839,9 +838,8 @@ where
     type Item = U;
 
     fn poll_change(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
-        let mut this = self.project();
+        let this = self.project();
         this.signal
-            .as_mut()
             .poll_change(cx)
             .map(|opt| opt.map(|opt| opt.map(|value| (this.mapper)(&value)).unwrap_or_default()))
     }
@@ -867,9 +865,8 @@ where
     type Item = Option<U>;
 
     fn poll_change(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
-        let mut this = self.project();
+        let this = self.project();
         this.signal
-            .as_mut()
             .poll_change(cx)
             .map(|opt| opt.map(|opt| opt.and_then(|value| (this.mapper)(&value))))
     }
@@ -893,9 +890,8 @@ where
     type Item = T;
 
     fn poll_change(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
-        let mut this = self.project();
-        this.signal
-            .as_mut()
+        self.project()
+            .signal
             .poll_change(cx)
             .map(|opt| opt.map(|opt| opt.unwrap_or_default()))
     }
