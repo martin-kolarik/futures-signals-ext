@@ -146,11 +146,15 @@ where
                     continue;
                 }
                 Some(Poll::Ready(None)) => {
+                    log::error!("poll_pending: Some(Ready(None))");
                     self.signal_vec = None;
                     true
                 }
                 Some(Poll::Pending) => false,
-                None => true,
+                None => {
+                    log::error!("poll_pending: None");
+                    true
+                }
             };
         }
     }
