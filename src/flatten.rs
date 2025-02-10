@@ -306,11 +306,15 @@ where
         let mut inner_done = true;
         let mut prev_len = 0;
         for state in this.inner.iter_mut() {
+            log::error!("inner iter {}", prev_len);
+
             let done = state.poll_pending(cx, prev_len, &mut pending);
 
             inner_done &= done;
             prev_len += state.len;
         }
+
+        log::error!("done: {top_done} {inner_done}");
 
         if let Some(first) = pending.first {
             *this.pending = pending.rest;
