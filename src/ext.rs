@@ -7,13 +7,20 @@ use futures_signals::{
 };
 use pin_project_lite::pin_project;
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::VecDeque,
     hash::Hash,
     marker::PhantomData,
     mem,
     pin::Pin,
     task::{Context, Poll},
 };
+
+#[cfg(feature = "ahash")]
+type Hasher = ahash::RandomState;
+#[cfg(not(feature = "ahash"))]
+type Hasher = std::hash::RandomState;
+
+type HashMap<K, V> = std::collections::HashMap<K, V, Hasher>;
 
 use crate::{Flatten, MutableVecEntry, SignalVecSpawn};
 

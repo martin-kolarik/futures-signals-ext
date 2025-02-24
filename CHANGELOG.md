@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file. The
 format is based on [Keep a Changelog], and this project aims to follow
 [Semantic Versioning].
 
+## [0.8.0] - 2025-02-24
+
+### Added
+
+- optional feature `ahash` replacing `std::hash::RandomState` for `HashMap`
+
 ## [0.7.1] - 2025-02-24
 
 ### Added
