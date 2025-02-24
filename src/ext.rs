@@ -199,13 +199,13 @@ pub trait MutableVecExt<A> {
         F: FnMut(&A) -> K,
         K: Eq + Hash;
 
-    fn synchronize<F, K>(&self, key: F, source: impl IntoIterator<Item = A>)
+    fn synchronize<F, K>(&self, key: F, source: impl IntoIterator<Item = A>) -> bool
     where
         A: Copy,
         F: FnMut(&A) -> K,
         K: Eq + Hash;
 
-    fn synchronize_cloned<F, K>(&self, key: F, source: impl IntoIterator<Item = A>)
+    fn synchronize_cloned<F, K>(&self, key: F, source: impl IntoIterator<Item = A>) -> bool
     where
         A: Clone,
         F: FnMut(&A) -> K,
@@ -530,7 +530,7 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         extended
     }
 
-    fn synchronize<F, K>(&self, mut key: F, source: impl IntoIterator<Item = A>)
+    fn synchronize<F, K>(&self, mut key: F, source: impl IntoIterator<Item = A>) -> bool
     where
         A: Copy,
         F: FnMut(&A) -> K,
@@ -554,12 +554,15 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
             lock.remove(index);
         }
 
+        let extended = !source.is_empty();
         for item in source.into_values() {
             lock.push(item);
         }
+
+        extended
     }
 
-    fn synchronize_cloned<F, K>(&self, mut key: F, source: impl IntoIterator<Item = A>)
+    fn synchronize_cloned<F, K>(&self, mut key: F, source: impl IntoIterator<Item = A>) -> bool
     where
         A: Clone,
         F: FnMut(&A) -> K,
@@ -583,9 +586,12 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
             lock.remove(index);
         }
 
+        let extended = !source.is_empty();
         for item in source.into_values() {
             lock.push_cloned(item);
         }
+
+        extended
     }
 
     #[cfg(feature = "spawn")]
