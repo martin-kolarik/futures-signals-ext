@@ -4,7 +4,17 @@ All notable changes to this project will be documented in this file. The
 format is based on [Keep a Changelog], and this project aims to follow
 [Semantic Versioning].
 
-## [0.6.0] - 2025-02-10
+## [0.7.0] - 2025-02-24
+
+### Added
+
+- `synchronize` added to `MutableVecExt`
+
+### Changed
+
+- `replace_or_extend_keyed` renamed to `replace_keyed`
+
+## [0.6.1] - 2025-02-10
 
 ### Added
 

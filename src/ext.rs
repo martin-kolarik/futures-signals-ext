@@ -187,17 +187,25 @@ pub trait MutableVecExt<A> {
         A: Clone,
         P: FnMut(&A) -> bool;
 
-    fn replace_or_extend_keyed<F, K>(&self, f: F, source: impl IntoIterator<Item = A>) -> bool
+    fn replace_keyed<F, K>(&self, key: F, source: impl IntoIterator<Item = A>) -> bool
     where
         A: Copy,
         F: FnMut(&A) -> K,
         K: Eq + Hash;
 
-    fn replace_or_extend_keyed_cloned<F, K>(
-        &self,
-        f: F,
-        source: impl IntoIterator<Item = A>,
-    ) -> bool
+    fn replace_keyed_cloned<F, K>(&self, f: F, source: impl IntoIterator<Item = A>) -> bool
+    where
+        A: Clone,
+        F: FnMut(&A) -> K,
+        K: Eq + Hash;
+
+    fn synchronize<F, K>(&self, key: F, source: impl IntoIterator<Item = A>)
+    where
+        A: Copy,
+        F: FnMut(&A) -> K,
+        K: Eq + Hash;
+
+    fn synchronize_cloned<F, K>(&self, key: F, source: impl IntoIterator<Item = A>)
     where
         A: Clone,
         F: FnMut(&A) -> K,
@@ -432,50 +440,49 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         }
     }
 
-    fn replace<P>(&self, mut p: P, with: impl IntoIterator<Item = A>)
+    fn replace<P>(&self, mut what: P, with: impl IntoIterator<Item = A>)
     where
         A: Copy,
         P: FnMut(&A) -> bool,
     {
         let mut lock = self.lock_mut();
-        lock.retain(|item| !p(item));
+        lock.retain(|item| !what(item));
         for item in with.into_iter() {
             lock.push(item);
         }
     }
 
-    fn replace_cloned<P>(&self, mut p: P, with: impl IntoIterator<Item = A>)
+    fn replace_cloned<P>(&self, mut what: P, with: impl IntoIterator<Item = A>)
     where
         A: Clone,
         P: FnMut(&A) -> bool,
     {
         let mut lock = self.lock_mut();
-        lock.retain(|item| !p(item));
+        lock.retain(|item| !what(item));
         for item in with.into_iter() {
             lock.push_cloned(item);
         }
     }
 
-    fn replace_or_extend_keyed<F, K>(&self, mut f: F, source: impl IntoIterator<Item = A>) -> bool
+    fn replace_keyed<F, K>(&self, mut key: F, source: impl IntoIterator<Item = A>) -> bool
     where
         A: Copy,
         F: FnMut(&A) -> K,
         K: Eq + Hash,
     {
-        let mut source = source
-            .into_iter()
-            .map(|item| (f(&item), item))
-            .collect::<HashMap<_, _>>();
+        let mut source: HashMap<_, _> = source.into_iter().map(|item| (key(&item), item)).collect();
+
         let mut lock = self.lock_mut();
-        let indexes = lock
+
+        let to_replace = lock
             .iter()
             .enumerate()
             .filter_map(|(index, item)| {
-                let key = f(item);
+                let key = key(item);
                 source.get(&key).map(|_| (index, key))
             })
             .collect::<Vec<_>>();
-        for (index, item) in indexes
+        for (index, item) in to_replace
             .into_iter()
             .filter_map(|(index, key)| source.remove(&key).map(|item| (index, item)))
         {
@@ -483,29 +490,24 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         }
 
         let extended = !source.is_empty();
-        for (_, item) in source.into_iter() {
+        for item in source.into_values() {
             lock.push(item);
         }
 
         extended
     }
 
-    fn replace_or_extend_keyed_cloned<F, K>(
-        &self,
-        mut f: F,
-        source: impl IntoIterator<Item = A>,
-    ) -> bool
+    fn replace_keyed_cloned<F, K>(&self, mut f: F, source: impl IntoIterator<Item = A>) -> bool
     where
         A: Clone,
         F: FnMut(&A) -> K,
         K: Eq + Hash,
     {
-        let mut source = source
-            .into_iter()
-            .map(|item| (f(&item), item))
-            .collect::<HashMap<_, _>>();
+        let mut source: HashMap<_, _> = source.into_iter().map(|item| (f(&item), item)).collect();
+
         let mut lock = self.lock_mut();
-        let indexes = lock
+
+        let to_replace = lock
             .iter()
             .enumerate()
             .filter_map(|(index, item)| {
@@ -513,7 +515,7 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
                 source.get(&key).map(|_| (index, key))
             })
             .collect::<Vec<_>>();
-        for (index, item) in indexes
+        for (index, item) in to_replace
             .into_iter()
             .filter_map(|(index, key)| source.remove(&key).map(|item| (index, item)))
         {
@@ -521,11 +523,69 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         }
 
         let extended = !source.is_empty();
-        for (_, item) in source.into_iter() {
+        for item in source.into_values() {
             lock.push_cloned(item);
         }
 
         extended
+    }
+
+    fn synchronize<F, K>(&self, mut key: F, source: impl IntoIterator<Item = A>)
+    where
+        A: Copy,
+        F: FnMut(&A) -> K,
+        K: Eq + Hash,
+    {
+        let mut source: HashMap<_, _> = source.into_iter().map(|item| (key(&item), item)).collect();
+
+        let mut lock = self.lock_mut();
+
+        let to_remove: Vec<_> = lock
+            .iter()
+            .enumerate()
+            .rev()
+            .filter_map(|(index, item)| match source.remove(&key(item)) {
+                Some(_) => None,
+                None => Some(index),
+            })
+            .collect();
+        // indexes go down, no need to calculate them anyhow
+        for index in to_remove.into_iter() {
+            lock.remove(index);
+        }
+
+        for item in source.into_values() {
+            lock.push(item);
+        }
+    }
+
+    fn synchronize_cloned<F, K>(&self, mut key: F, source: impl IntoIterator<Item = A>)
+    where
+        A: Clone,
+        F: FnMut(&A) -> K,
+        K: Eq + Hash,
+    {
+        let mut source: HashMap<_, _> = source.into_iter().map(|item| (key(&item), item)).collect();
+
+        let mut lock = self.lock_mut();
+
+        let to_remove = lock
+            .iter()
+            .enumerate()
+            .rev()
+            .filter_map(|(index, item)| match source.remove(&key(item)) {
+                Some(_) => None,
+                None => Some(index),
+            })
+            .collect::<Vec<_>>();
+        // indexes go down, no need to calculate them anyhow
+        for index in to_remove.into_iter() {
+            lock.remove(index);
+        }
+
+        for item in source.into_values() {
+            lock.push_cloned(item);
+        }
     }
 
     #[cfg(feature = "spawn")]
