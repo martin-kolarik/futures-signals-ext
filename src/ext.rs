@@ -15,6 +15,8 @@ use std::{
     task::{Context, Poll},
 };
 
+use crate::{Flatten, MutableVecEntry, SignalVecSpawn};
+
 #[cfg(feature = "ahash")]
 type Hasher = ahash::RandomState;
 #[cfg(not(feature = "ahash"))]
@@ -22,7 +24,20 @@ type Hasher = std::hash::RandomState;
 
 type HashMap<K, V> = std::collections::HashMap<K, V, Hasher>;
 
-use crate::{Flatten, MutableVecEntry, SignalVecSpawn};
+fn collect_hash_map<K, V, I>(iter: I) -> HashMap<K, V>
+where
+    K: Eq + Hash,
+    I: Iterator<Item = (K, V)>,
+{
+    #[cfg(feature = "ahash")]
+    {
+        let mut map = HashMap::with_hasher(Hasher::with_seed(250402117));
+        map.extend(iter);
+        map
+    }
+    #[cfg(not(feature = "ahash"))]
+    iter.collect()
+}
 
 pub trait MutableExt<A> {
     fn inspect(&self, f: impl FnOnce(&A));
@@ -477,7 +492,8 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         F: FnMut(&A) -> K,
         K: Eq + Hash,
     {
-        let mut source: HashMap<_, _> = source.into_iter().map(|item| (key(&item), item)).collect();
+        let source = source.into_iter().map(|item| (key(&item), item));
+        let mut source = collect_hash_map(source);
 
         let mut lock = self.lock_mut();
 
@@ -504,13 +520,14 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         extended
     }
 
-    fn replace_keyed_cloned<F, K>(&self, mut f: F, source: impl IntoIterator<Item = A>) -> bool
+    fn replace_keyed_cloned<F, K>(&self, mut key: F, source: impl IntoIterator<Item = A>) -> bool
     where
         A: Clone,
         F: FnMut(&A) -> K,
         K: Eq + Hash,
     {
-        let mut source: HashMap<_, _> = source.into_iter().map(|item| (f(&item), item)).collect();
+        let source = source.into_iter().map(|item| (key(&item), item));
+        let mut source = collect_hash_map(source);
 
         let mut lock = self.lock_mut();
 
@@ -518,7 +535,7 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
             .iter()
             .enumerate()
             .filter_map(|(index, item)| {
-                let key = f(item);
+                let key = key(item);
                 source.get(&key).map(|_| (index, key))
             })
             .collect::<Vec<_>>();
@@ -543,7 +560,8 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         F: FnMut(&A) -> K,
         K: Eq + Hash,
     {
-        let mut source: HashMap<_, _> = source.into_iter().map(|item| (key(&item), item)).collect();
+        let source = source.into_iter().map(|item| (key(&item), item));
+        let mut source = collect_hash_map(source);
 
         let mut lock = self.lock_mut();
 
@@ -575,7 +593,8 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         F: FnMut(&A) -> K,
         K: Eq + Hash,
     {
-        let mut source: HashMap<_, _> = source.into_iter().map(|item| (key(&item), item)).collect();
+        let source = source.into_iter().map(|item| (key(&item), item));
+        let mut source = collect_hash_map(source);
 
         let mut lock = self.lock_mut();
 

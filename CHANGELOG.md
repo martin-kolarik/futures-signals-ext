@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file. The
 format is based on [Keep a Changelog], and this project aims to follow
 [Semantic Versioning].
 
+## [0.8.1] - 2025-04-02
+
+### Changed
+
+- optional feature `ahash` is not using default `ahash`'s `getrandom` dependency
+
 ## [0.8.0] - 2025-02-24
 
 ### Added
