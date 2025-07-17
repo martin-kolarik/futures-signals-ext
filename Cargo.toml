@@ -7,6 +7,7 @@ edition = "2024"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/martin-kolarik/futures-signals-ext"
 homepage = "https://github.com/martin-kolarik/futures-signals-ext"
+rust-version = "1.88.0"
 
 [features]
 default = ["option", "spawn-local"]

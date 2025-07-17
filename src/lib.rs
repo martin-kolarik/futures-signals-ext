@@ -1,5 +1,3 @@
-#![feature(let_chains)]
-
 #[cfg(any(feature = "spawn", feature = "spawn-local"))]
 mod spawn;
 #[cfg(any(feature = "spawn", feature = "spawn-local"))]
