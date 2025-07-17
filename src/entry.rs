@@ -339,17 +339,17 @@ impl<V: Clone> Drop for ValueCloned<'_, V> {
 }
 
 pub trait MutableVecEntry<V> {
-    fn entry<F>(&self, f: F) -> Entry<V>
+    fn entry<F>(&self, f: F) -> Entry<'_, V>
     where
         F: FnMut(&V) -> bool;
 
-    fn entry_cloned<F>(&self, f: F) -> EntryCloned<V>
+    fn entry_cloned<F>(&self, f: F) -> EntryCloned<'_, V>
     where
         F: FnMut(&V) -> bool;
 }
 
 impl<V> MutableVecEntry<V> for MutableVec<V> {
-    fn entry<F>(&self, f: F) -> Entry<V>
+    fn entry<F>(&self, f: F) -> Entry<'_, V>
     where
         F: FnMut(&V) -> bool,
     {
@@ -358,7 +358,7 @@ impl<V> MutableVecEntry<V> for MutableVec<V> {
         Entry { key, lock }
     }
 
-    fn entry_cloned<F>(&self, f: F) -> EntryCloned<V>
+    fn entry_cloned<F>(&self, f: F) -> EntryCloned<'_, V>
     where
         F: FnMut(&V) -> bool,
     {

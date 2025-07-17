@@ -712,6 +712,27 @@ pub trait SignalVecFinalizerExt: SignalVec + Sized {
         self.to_signal_map(move |items| items.first().map(&mut f))
     }
 
+    fn last(self) -> impl Signal<Item = Option<Self::Item>>
+    where
+        Self::Item: Copy,
+    {
+        self.last_map(|i| *i)
+    }
+
+    fn last_cloned(self) -> impl Signal<Item = Option<Self::Item>>
+    where
+        Self::Item: Clone,
+    {
+        self.last_map(|i| i.clone())
+    }
+
+    fn last_map<F, U>(self, mut f: F) -> impl Signal<Item = Option<U>>
+    where
+        F: FnMut(&Self::Item) -> U,
+    {
+        self.to_signal_map(move |items| items.last().map(&mut f))
+    }
+
     fn all<F>(self, mut f: F) -> impl Signal<Item = bool>
     where
         F: FnMut(&Self::Item) -> bool,
