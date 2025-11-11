@@ -185,6 +185,7 @@ fn fill_removals<A>(
         });
     }
 }
+
 fn fill_moves<A>(
     inner: &[FlattenState<A>],
     old_index: usize,

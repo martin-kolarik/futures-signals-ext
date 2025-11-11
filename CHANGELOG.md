@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file. The
 format is based on [Keep a Changelog], and this project aims to follow
 [Semantic Versioning].
 
+## [0.10.0] - 2025-11-11
+
+### Change
+
+- `MutableOption::signal_map` signature changed to return `U` instead of `Option<U>`
+
 ## [0.9.0] - 2025-07-17
 
 ### New

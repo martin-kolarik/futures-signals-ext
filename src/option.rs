@@ -110,9 +110,9 @@ impl<T> MutableOption<T> {
         self.signal_map_some_default(|v| v.clone())
     }
 
-    pub fn signal_map<F, U>(&self, mut f: F) -> impl Signal<Item = Option<U>> + use<T, F, U>
+    pub fn signal_map<F, U>(&self, mut f: F) -> impl Signal<Item = U> + use<T, F, U>
     where
-        F: FnMut(Option<&T>) -> Option<U>,
+        F: FnMut(Option<&T>) -> U,
     {
         self.0.signal_ref(move |v| f(v.as_ref()))
     }
