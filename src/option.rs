@@ -55,15 +55,22 @@ impl<T> MutableOption<T> {
         self.0.take()
     }
 
+    pub fn take_if<F>(&self, mut f: F) -> Option<T>
+    where
+        F: FnMut(&T) -> bool,
+    {
+        let mut current = self.0.lock_mut();
+        match &*current {
+            Some(current_value) if f(current_value) => current.take(),
+            _ => None,
+        }
+    }
+
     pub fn take_if_value(&self, value: &T) -> Option<T>
     where
         T: PartialEq,
     {
-        let mut current = self.0.lock_mut();
-        match &*current {
-            Some(current_value) if current_value == value => current.take(),
-            _ => None,
-        }
+        self.take_if(|current| current == value)
     }
 
     pub fn as_mutable(&self) -> Mutable<Option<T>> {
