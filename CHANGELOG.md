@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file. The
 format is based on [Keep a Changelog], and this project aims to follow
 [Semantic Versioning].
 
+## [0.10.2] - 2026-01-01
+
+### Added
+
+- `MutableOption::inspect` and `MutableOption::inspect_mut` added
+
 ## [0.10.1] - 2025-11-11
 
 ### Added
