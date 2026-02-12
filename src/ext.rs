@@ -1,5 +1,5 @@
 use futures_signals::{
-    signal::{Mutable, Signal},
+    signal::{Mutable, Signal, SignalExt},
     signal_vec::{
         Filter, FilterSignalCloned, MutableSignalVec, MutableVec, MutableVecLockMut, SignalVec,
         SignalVecExt,
@@ -745,6 +745,10 @@ pub trait SignalVecFinalizerExt: SignalVec + Sized {
         F: FnMut(&Self::Item) -> bool,
     {
         self.to_signal_map(move |items| items.iter().any(&mut f))
+    }
+
+    fn any_item(self) -> impl Signal<Item = bool> {
+        self.len().neq(0)
     }
 
     fn seq(self) -> Sequence<Self> {
