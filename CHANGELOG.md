@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file. The
 format is based on [Keep a Changelog], and this project aims to follow
 [Semantic Versioning].
 
+## [0.11.0, 0.11.1] - 2026-02-27
+
+### Change
+
+- bump up version or `artwrap`
+
 ## [0.10.4] - 2026-02-12
 
 ### Added
