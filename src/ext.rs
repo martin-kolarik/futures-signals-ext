@@ -502,15 +502,9 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         let to_replace = lock
             .iter()
             .enumerate()
-            .filter_map(|(index, item)| {
-                let key = key(item);
-                source.get(&key).map(|_| (index, key))
-            })
+            .filter_map(|(index, item)| source.remove(&key(item)).map(|item| (index, item)))
             .collect::<Vec<_>>();
-        for (index, item) in to_replace
-            .into_iter()
-            .filter_map(|(index, key)| source.remove(&key).map(|item| (index, item)))
-        {
+        for (index, item) in to_replace {
             lock.set(index, item)
         }
 
@@ -536,15 +530,9 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         let to_replace = lock
             .iter()
             .enumerate()
-            .filter_map(|(index, item)| {
-                let key = key(item);
-                source.get(&key).map(|_| (index, key))
-            })
+            .filter_map(|(index, item)| source.remove(&key(item)).map(|item| (index, item)))
             .collect::<Vec<_>>();
-        for (index, item) in to_replace
-            .into_iter()
-            .filter_map(|(index, key)| source.remove(&key).map(|item| (index, item)))
-        {
+        for (index, item) in to_replace {
             lock.set_cloned(index, item)
         }
 
@@ -693,6 +681,7 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
 }
 
 pub trait SignalVecFinalizerExt: SignalVec + Sized {
+    #[inline]
     fn first(self) -> impl Signal<Item = Option<Self::Item>>
     where
         Self::Item: Copy,
@@ -714,6 +703,7 @@ pub trait SignalVecFinalizerExt: SignalVec + Sized {
         self.to_signal_map(move |items| items.first().map(&mut f))
     }
 
+    #[inline]
     fn last(self) -> impl Signal<Item = Option<Self::Item>>
     where
         Self::Item: Copy,
@@ -749,6 +739,7 @@ pub trait SignalVecFinalizerExt: SignalVec + Sized {
         self.to_signal_map(move |items| items.iter().any(&mut f))
     }
 
+    #[inline]
     fn any_item(self) -> impl Signal<Item = bool> {
         self.len().neq(0)
     }
@@ -1059,5 +1050,35 @@ where
         } else {
             Poll::Pending
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use futures_signals::signal_vec::MutableVec;
+
+    use crate::MutableVecExt;
+
+    #[test]
+    fn replace_keyed() {
+        let vec = MutableVec::new_with_values(vec![("a", 1), ("b", 2), ("c", 3)]);
+        assert_eq!(vec.replace_keyed(|(k, _)| *k, [("b", 20), ("d", 4)]), true);
+        assert_eq!(
+            vec.lock_ref().as_slice(),
+            &[("a", 1), ("b", 20), ("c", 3), ("d", 4)]
+        );
+    }
+
+    #[test]
+    fn replace_keyed_cloned() {
+        let vec = MutableVec::new_with_values(vec![("a", 1), ("b", 2), ("c", 3)]);
+        assert_eq!(
+            vec.replace_keyed_cloned(|(k, _)| *k, [("b", 20), ("d", 4)]),
+            true
+        );
+        assert_eq!(
+            vec.lock_ref().as_slice(),
+            &[("a", 1), ("b", 20), ("c", 3), ("d", 4)]
+        );
     }
 }
