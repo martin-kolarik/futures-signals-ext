@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file. The
 format is based on [Keep a Changelog], and this project aims to follow
 [Semantic Versioning].
 
+## [0.12.0] - 2026-03-04
+
+### Change
+
+- `Entry` API changes, `DerefMut` on `Value`, `and_set_or_insert` instead of `or_insert_entry`
+
+- `MutableVecExt::inspect` taking `FnOnce` changed to `MutableVecExt::inspect_vec` taking `FnMut`
+
 ## [0.11.0, 0.11.1] - 2026-02-27
 
 ### Change

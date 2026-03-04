@@ -110,8 +110,8 @@ pub trait MutableVecExt<A> {
     where
         F: FnOnce(&mut MutableVecLockMut<A>) -> U;
 
-    fn inspect(&self, f: impl FnOnce(&[A]));
-    fn inspect_mut(&self, f: impl FnOnce(&mut MutableVecLockMut<A>));
+    fn inspect_vec(&self, f: impl FnMut(&[A]));
+    fn inspect_vec_mut(&self, f: impl FnMut(&mut MutableVecLockMut<A>));
 
     fn find_inspect_mut<P, F>(&self, predicate: P, f: F) -> Option<bool>
     where
@@ -294,11 +294,13 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         f(&mut self.lock_mut())
     }
 
-    fn inspect(&self, f: impl FnOnce(&[A])) {
+    #[inline]
+    fn inspect_vec(&self, mut f: impl FnMut(&[A])) {
         f(&self.lock_ref())
     }
 
-    fn inspect_mut(&self, f: impl FnOnce(&mut MutableVecLockMut<A>)) {
+    #[inline]
+    fn inspect_vec_mut(&self, mut f: impl FnMut(&mut MutableVecLockMut<A>)) {
         f(&mut self.lock_mut())
     }
 
@@ -415,7 +417,7 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         A: Copy,
         P: FnMut(&A) -> bool,
     {
-        self.entry(p).or_insert_entry(item);
+        self.entry(p).and_set_or_insert(item);
     }
 
     fn find_set_or_add_cloned<P>(&self, p: P, item: A)
@@ -423,7 +425,7 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         A: Clone,
         P: FnMut(&A) -> bool,
     {
-        self.entry_cloned(p).or_insert_entry(item);
+        self.entry_cloned(p).and_set_or_insert(item);
     }
 
     fn find_remove<P>(&self, p: P) -> bool

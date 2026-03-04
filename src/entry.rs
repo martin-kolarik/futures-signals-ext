@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
 use futures_signals::signal_vec::{MutableVec, MutableVecLockMut};
 
@@ -13,14 +13,17 @@ impl<'a, V: Copy> Entry<'a, V> {
         Value::existing(self, value)
     }
 
+    #[inline]
     pub fn is_vacant(&self) -> bool {
         self.key.is_none()
     }
 
+    #[inline]
     pub fn is_occupied(&self) -> bool {
         self.key.is_some()
     }
 
+    #[inline]
     pub fn key(&self) -> Option<usize> {
         self.key
     }
@@ -36,6 +39,7 @@ impl<'a, V: Copy> Entry<'a, V> {
         }
     }
 
+    #[inline]
     pub fn or_insert_with<F: FnOnce() -> V>(self, value: F) -> Value<'a, V> {
         self.or_insert(value())
     }
@@ -64,9 +68,11 @@ impl<'a, V: Copy> Entry<'a, V> {
         }
     }
 
-    pub fn or_insert_entry(mut self, value: V) -> Self {
+    pub fn and_set_or_insert(mut self, value: V) -> Value<'a, V> {
         self.set(value);
-        self
+        // after set key always exists
+        let key = self.key.unwrap();
+        self.existing(key)
     }
 
     fn set(&mut self, value: V) {
@@ -139,6 +145,7 @@ impl<'a, V: Copy> Value<'a, V> {
         }
     }
 
+    #[inline]
     pub fn modified(self) -> bool {
         self.modified
     }
@@ -157,6 +164,13 @@ impl<V: Copy> Deref for Value<'_, V> {
 
     fn deref(&self) -> &V {
         &self.value
+    }
+}
+
+impl<V: Copy> DerefMut for Value<'_, V> {
+    fn deref_mut(&mut self) -> &mut V {
+        self.modified = true;
+        &mut self.value
     }
 }
 
@@ -181,14 +195,17 @@ impl<'a, V: Clone> EntryCloned<'a, V> {
         ValueCloned::existing(self, value)
     }
 
+    #[inline]
     pub fn is_vacant(&self) -> bool {
         self.key.is_none()
     }
 
+    #[inline]
     pub fn is_occupied(&self) -> bool {
         self.key.is_some()
     }
 
+    #[inline]
     pub fn key(&self) -> Option<usize> {
         self.key
     }
@@ -204,6 +221,7 @@ impl<'a, V: Clone> EntryCloned<'a, V> {
         }
     }
 
+    #[inline]
     pub fn or_insert_with<F: FnOnce() -> V>(self, value: F) -> ValueCloned<'a, V> {
         self.or_insert(value())
     }
@@ -232,9 +250,11 @@ impl<'a, V: Clone> EntryCloned<'a, V> {
         }
     }
 
-    pub fn or_insert_entry(mut self, value: V) -> Self {
+    pub fn and_set_or_insert(mut self, value: V) -> ValueCloned<'a, V> {
         self.set(value);
-        self
+        // after set key always exists
+        let key = self.key.unwrap();
+        self.existing(key)
     }
 
     fn set(&mut self, value: V) {
@@ -307,6 +327,7 @@ impl<'a, V: Clone> ValueCloned<'a, V> {
         }
     }
 
+    #[inline]
     pub fn modified(self) -> bool {
         self.modified
     }
@@ -325,6 +346,13 @@ impl<V: Clone> Deref for ValueCloned<'_, V> {
 
     fn deref(&self) -> &V {
         &self.value
+    }
+}
+
+impl<V: Clone> DerefMut for ValueCloned<'_, V> {
+    fn deref_mut(&mut self) -> &mut V {
+        self.modified = true;
+        &mut self.value
     }
 }
 
