@@ -233,6 +233,8 @@ pub trait MutableVecExt<A> {
         F: FnMut(&A) -> K,
         K: Eq + Hash;
 
+    fn take(&self) -> Vec<A>;
+
     #[cfg(feature = "spawn")]
     fn feed(&self, source: impl SignalVec<Item = A> + Send + 'static)
     where
@@ -608,6 +610,10 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         }
 
         extended
+    }
+
+    fn take(&self) -> Vec<A> {
+        self.lock_mut().drain(..).collect()
     }
 
     #[cfg(feature = "spawn")]
