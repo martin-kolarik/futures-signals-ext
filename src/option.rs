@@ -77,18 +77,18 @@ impl<T> MutableOption<T> {
         self.0.clone()
     }
 
-    pub fn inspect_some<F>(&self, f: F)
+    pub fn inspect_some<F>(&self, mut f: F)
     where
-        F: FnOnce(&T),
+        F: FnMut(&T),
     {
         if let Some(lock) = self.0.lock_ref().as_ref() {
             f(lock);
         }
     }
 
-    pub fn inspect_some_mut<F>(&self, f: F)
+    pub fn inspect_some_mut<F>(&self, mut f: F)
     where
-        F: FnOnce(&mut T),
+        F: FnMut(&mut T),
     {
         if let Some(lock) = self.0.lock_mut().as_mut() {
             f(lock);

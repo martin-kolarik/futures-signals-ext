@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file. The
 format is based on [Keep a Changelog], and this project aims to follow
 [Semantic Versioning].
 
+## [0.13.0] - 2026-03-14
+
+### Changed
+
+- `OptionExt`, `Entry`, `MutableExt`, and `MutableVecExt` apis `FnMut`, `FnOnce` reviewed and unified
+
+### Fixed
+
+- `Entry::or_insert_with` does not call `f` if it should not
+
 ## [0.12.2] - 2026-03-09
 
 ### Added

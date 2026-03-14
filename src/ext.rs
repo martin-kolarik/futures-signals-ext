@@ -40,8 +40,8 @@ where
 }
 
 pub trait MutableExt<A> {
-    fn inspect(&self, f: impl FnOnce(&A));
-    fn inspect_mut(&self, f: impl FnOnce(&mut A));
+    fn inspect(&self, f: impl FnMut(&A));
+    fn inspect_mut(&self, f: impl FnMut(&mut A));
 
     fn map<B>(&self, f: impl FnOnce(&A) -> B) -> B;
     fn map_mut<B>(&self, f: impl FnOnce(&mut A) -> B) -> B;
@@ -70,11 +70,11 @@ pub trait MutableExt<A> {
 }
 
 impl<A> MutableExt<A> for Mutable<A> {
-    fn inspect(&self, f: impl FnOnce(&A)) {
+    fn inspect(&self, mut f: impl FnMut(&A)) {
         f(&self.lock_ref())
     }
 
-    fn inspect_mut(&self, f: impl FnOnce(&mut A)) {
+    fn inspect_mut(&self, mut f: impl FnMut(&mut A)) {
         f(&mut self.lock_mut())
     }
 
@@ -102,6 +102,9 @@ impl<A> MutableExt<A> for Mutable<A> {
 }
 
 pub trait MutableVecExt<A> {
+    fn inspect_vec(&self, f: impl FnMut(&[A]));
+    fn inspect_vec_mut(&self, f: impl FnMut(&mut MutableVecLockMut<A>));
+
     fn map_vec<F, U>(&self, f: F) -> U
     where
         F: FnOnce(&[A]) -> U;
@@ -110,20 +113,17 @@ pub trait MutableVecExt<A> {
     where
         F: FnOnce(&mut MutableVecLockMut<A>) -> U;
 
-    fn inspect_vec(&self, f: impl FnMut(&[A]));
-    fn inspect_vec_mut(&self, f: impl FnMut(&mut MutableVecLockMut<A>));
-
     fn find_inspect_mut<P, F>(&self, predicate: P, f: F) -> Option<bool>
     where
         A: Copy,
         P: FnMut(&A) -> bool,
-        F: FnOnce(&mut A) -> bool;
+        F: FnMut(&mut A) -> bool;
 
     fn find_inspect_mut_cloned<P, F>(&self, predicate: P, f: F) -> Option<bool>
     where
         A: Clone,
         P: FnMut(&A) -> bool,
-        F: FnOnce(&mut A) -> bool;
+        F: FnMut(&mut A) -> bool;
 
     fn map<F, U>(&self, f: F) -> Vec<U>
     where
@@ -282,6 +282,16 @@ pub trait MutableVecExt<A> {
 }
 
 impl<A> MutableVecExt<A> for MutableVec<A> {
+    #[inline]
+    fn inspect_vec(&self, mut f: impl FnMut(&[A])) {
+        f(&self.lock_ref())
+    }
+
+    #[inline]
+    fn inspect_vec_mut(&self, mut f: impl FnMut(&mut MutableVecLockMut<A>)) {
+        f(&mut self.lock_mut())
+    }
+
     fn map_vec<F, U>(&self, f: F) -> U
     where
         F: FnOnce(&[A]) -> U,
@@ -296,16 +306,6 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         f(&mut self.lock_mut())
     }
 
-    #[inline]
-    fn inspect_vec(&self, mut f: impl FnMut(&[A])) {
-        f(&self.lock_ref())
-    }
-
-    #[inline]
-    fn inspect_vec_mut(&self, mut f: impl FnMut(&mut MutableVecLockMut<A>)) {
-        f(&mut self.lock_mut())
-    }
-
     /// Return parameter of F (changed) drives if the value should be written back,
     /// and cause MutableVec change. If F returns false, no change is induced neither
     /// reported.
@@ -313,7 +313,7 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
     where
         A: Copy,
         P: FnMut(&A) -> bool,
-        F: FnOnce(&mut A) -> bool,
+        F: FnMut(&mut A) -> bool,
     {
         self.entry(predicate)
             .value()
@@ -327,7 +327,7 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
     where
         A: Clone,
         P: FnMut(&A) -> bool,
-        F: FnOnce(&mut A) -> bool,
+        F: FnMut(&mut A) -> bool,
     {
         self.entry_cloned(predicate)
             .value()

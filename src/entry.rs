@@ -39,9 +39,11 @@ impl<'a, V: Copy> Entry<'a, V> {
         }
     }
 
-    #[inline]
     pub fn or_insert_with<F: FnOnce() -> V>(self, value: F) -> Value<'a, V> {
-        self.or_insert(value())
+        match self.key {
+            Some(key) => self.existing(key),
+            None => Value::new(self, value()),
+        }
     }
 
     pub fn and_modify<F>(self, f: F) -> Self
@@ -122,9 +124,9 @@ impl<'a, V: Copy> Value<'a, V> {
         }
     }
 
-    pub fn inspect_mut<F>(&mut self, f: F) -> bool
+    pub fn inspect_mut<F>(&mut self, mut f: F) -> bool
     where
-        F: FnOnce(&mut V) -> bool,
+        F: FnMut(&mut V) -> bool,
     {
         self.modified = f(&mut self.value);
         self.modified
@@ -221,9 +223,11 @@ impl<'a, V: Clone> EntryCloned<'a, V> {
         }
     }
 
-    #[inline]
     pub fn or_insert_with<F: FnOnce() -> V>(self, value: F) -> ValueCloned<'a, V> {
-        self.or_insert(value())
+        match self.key {
+            Some(key) => self.existing(key),
+            None => ValueCloned::new(self, value()),
+        }
     }
 
     pub fn and_modify<F>(self, f: F) -> Self
@@ -304,9 +308,9 @@ impl<'a, V: Clone> ValueCloned<'a, V> {
         }
     }
 
-    pub fn inspect_mut<F>(&mut self, f: F) -> bool
+    pub fn inspect_mut<F>(&mut self, mut f: F) -> bool
     where
-        F: FnOnce(&mut V) -> bool,
+        F: FnMut(&mut V) -> bool,
     {
         self.modified = f(&mut self.value);
         self.modified
