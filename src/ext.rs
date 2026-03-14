@@ -181,6 +181,34 @@ pub trait MutableVecExt<A> {
         A: Clone,
         P: FnMut(&A) -> bool;
 
+    fn find_set_if<P, F, I>(&self, p: P, item: F, i: I) -> bool
+    where
+        A: Copy,
+        F: FnMut() -> A,
+        P: FnMut(&A) -> bool,
+        I: FnMut(&A) -> bool;
+
+    fn find_set_if_cloned<P, F, I>(&self, p: P, item: F, i: I) -> bool
+    where
+        A: Clone,
+        F: FnMut() -> A,
+        P: FnMut(&A) -> bool,
+        I: FnMut(&A) -> bool;
+
+    fn find_set_if_or_add<P, F, I>(&self, p: P, item: F, i: I)
+    where
+        A: Copy,
+        F: FnMut() -> A,
+        P: FnMut(&A) -> bool,
+        I: FnMut(&A) -> bool;
+
+    fn find_set_if_or_add_cloned<P, F, I>(&self, p: P, item: F, i: I)
+    where
+        A: Clone,
+        F: FnMut() -> A,
+        P: FnMut(&A) -> bool,
+        I: FnMut(&A) -> bool;
+
     fn find_remove<P>(&self, p: P) -> bool
     where
         A: Copy,
@@ -428,6 +456,90 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         P: FnMut(&A) -> bool,
     {
         self.entry_cloned(p).and_set_or_insert(item);
+    }
+
+    fn find_set_if<P, F, I>(&self, p: P, mut item: F, mut i: I) -> bool
+    where
+        A: Copy,
+        F: FnMut() -> A,
+        P: FnMut(&A) -> bool,
+        I: FnMut(&A) -> bool,
+    {
+        self.entry(p)
+            .and_modify(|existing| {
+                existing.inspect_mut(|existing| {
+                    if i(existing) {
+                        *existing = item();
+                        true
+                    } else {
+                        false
+                    }
+                });
+            })
+            .is_occupied()
+    }
+
+    fn find_set_if_cloned<P, F, I>(&self, p: P, mut item: F, mut i: I) -> bool
+    where
+        A: Clone,
+        F: FnMut() -> A,
+        P: FnMut(&A) -> bool,
+        I: FnMut(&A) -> bool,
+    {
+        self.entry_cloned(p)
+            .and_modify(|existing| {
+                existing.inspect_mut(|existing| {
+                    if i(existing) {
+                        *existing = item();
+                        true
+                    } else {
+                        false
+                    }
+                });
+            })
+            .is_occupied()
+    }
+
+    fn find_set_if_or_add<P, F, I>(&self, p: P, mut item: F, mut i: I)
+    where
+        A: Copy,
+        F: FnMut() -> A,
+        P: FnMut(&A) -> bool,
+        I: FnMut(&A) -> bool,
+    {
+        self.entry(p)
+            .and_modify(|existing| {
+                existing.inspect_mut(|existing| {
+                    if i(existing) {
+                        *existing = item();
+                        true
+                    } else {
+                        false
+                    }
+                });
+            })
+            .or_insert_with(item);
+    }
+
+    fn find_set_if_or_add_cloned<P, F, I>(&self, p: P, mut item: F, mut i: I)
+    where
+        A: Clone,
+        F: FnMut() -> A,
+        P: FnMut(&A) -> bool,
+        I: FnMut(&A) -> bool,
+    {
+        self.entry_cloned(p)
+            .and_modify(|existing| {
+                existing.inspect_mut(|existing| {
+                    if i(existing) {
+                        *existing = item();
+                        true
+                    } else {
+                        false
+                    }
+                });
+            })
+            .or_insert_with(item);
     }
 
     fn find_remove<P>(&self, p: P) -> bool
