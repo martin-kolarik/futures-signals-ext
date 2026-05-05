@@ -1,8 +1,8 @@
 use futures_signals::{
     signal::{Mutable, Signal, SignalExt},
     signal_vec::{
-        Filter, FilterSignalCloned, MutableSignalVec, MutableVec, MutableVecLockMut, SignalVec,
-        SignalVecExt,
+        Filter, FilterMap, FilterSignalCloned, MutableSignalVec, MutableVec, MutableVecLockMut,
+        SignalVec, SignalVecExt,
     },
 };
 use pin_project_lite::pin_project;
@@ -307,6 +307,16 @@ pub trait MutableVecExt<A> {
         A: Clone,
         P: FnMut(&A) -> S,
         S: Signal<Item = bool>;
+
+    fn signal_vec_filter_map<P, U>(&self, p: P) -> FilterMap<MutableSignalVec<A>, P>
+    where
+        A: Copy,
+        P: FnMut(A) -> Option<U>;
+
+    fn signal_vec_filter_map_cloned<P, U>(&self, p: P) -> FilterMap<MutableSignalVec<A>, P>
+    where
+        A: Clone,
+        P: FnMut(A) -> Option<U>;
 }
 
 impl<A> MutableVecExt<A> for MutableVec<A> {
@@ -760,6 +770,7 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         source.feed_local_cloned(self.clone());
     }
 
+    #[inline]
     fn signal_vec_filter<P>(&self, p: P) -> Filter<MutableSignalVec<A>, P>
     where
         A: Copy,
@@ -768,6 +779,7 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         self.signal_vec().filter(p)
     }
 
+    #[inline]
     fn signal_vec_filter_cloned<P>(&self, p: P) -> Filter<MutableSignalVec<A>, P>
     where
         A: Clone,
@@ -776,6 +788,7 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         self.signal_vec_cloned().filter(p)
     }
 
+    #[inline]
     fn signal_vec_filter_signal<P, S>(&self, p: P) -> FilterSignalCloned<MutableSignalVec<A>, S, P>
     where
         A: Copy,
@@ -785,6 +798,7 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         self.signal_vec().filter_signal_cloned(p)
     }
 
+    #[inline]
     fn signal_vec_filter_signal_cloned<P, S>(
         &self,
         p: P,
@@ -795,6 +809,24 @@ impl<A> MutableVecExt<A> for MutableVec<A> {
         S: Signal<Item = bool>,
     {
         self.signal_vec_cloned().filter_signal_cloned(p)
+    }
+
+    #[inline]
+    fn signal_vec_filter_map<P, U>(&self, p: P) -> FilterMap<MutableSignalVec<A>, P>
+    where
+        A: Copy,
+        P: FnMut(A) -> Option<U>,
+    {
+        self.signal_vec().filter_map(p)
+    }
+
+    #[inline]
+    fn signal_vec_filter_map_cloned<P, U>(&self, p: P) -> FilterMap<MutableSignalVec<A>, P>
+    where
+        A: Clone,
+        P: FnMut(A) -> Option<U>,
+    {
+        self.signal_vec_cloned().filter_map(p)
     }
 }
 
