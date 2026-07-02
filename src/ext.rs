@@ -46,13 +46,6 @@ pub trait MutableExt<A> {
     fn map<B>(&self, f: impl FnOnce(&A) -> B) -> B;
     fn map_mut<B>(&self, f: impl FnOnce(&mut A) -> B) -> B;
 
-    fn apply(&self, f: impl FnOnce(A) -> A)
-    where
-        A: Copy;
-    fn apply_cloned(&self, f: impl FnOnce(A) -> A)
-    where
-        A: Clone;
-
     fn into_inner(self) -> A
     where
         A: Default,
@@ -84,20 +77,6 @@ impl<A> MutableExt<A> for Mutable<A> {
 
     fn map_mut<B>(&self, f: impl FnOnce(&mut A) -> B) -> B {
         f(&mut self.lock_mut())
-    }
-
-    fn apply(&self, f: impl FnOnce(A) -> A)
-    where
-        A: Copy,
-    {
-        self.set(f(self.get()))
-    }
-
-    fn apply_cloned(&self, f: impl FnOnce(A) -> A)
-    where
-        A: Clone,
-    {
-        self.set(f(self.get_cloned()))
     }
 }
 
@@ -893,13 +872,6 @@ pub trait SignalVecFinalizerExt: SignalVec + Sized {
     fn any_item(self) -> impl Signal<Item = bool> {
         self.len().neq(0)
     }
-
-    fn seq(self) -> Sequence<Self> {
-        Sequence {
-            signal: self,
-            sequence: 0,
-        }
-    }
 }
 
 impl<S: SignalVec + Sized> SignalVecFinalizerExt for S {}
@@ -918,6 +890,91 @@ pub trait SignalVecFlattenExt: SignalVec + Sized {
 }
 
 impl<S: SignalVec + Sized> SignalVecFlattenExt for S {}
+
+pub trait SignalTimeExt: Signal + Sized {
+    #[inline]
+    fn debounce<W>(
+        self,
+        window: W,
+    ) -> Debounce<Self, W, Self::Item, impl FnMut(Self::Item, Self::Item) -> Self::Item> {
+        Self::debounce_reduce(self, window, |_, value| -> Self::Item { value })
+    }
+
+    fn debounce_reduce<W, R>(self, window: W, reduce: R) -> Debounce<Self, W, Self::Item, R>
+    where
+        R: FnMut(Self::Item, Self::Item) -> Self::Item,
+    {
+        Debounce {
+            signal: self,
+            window,
+            acc: None,
+            reduce,
+        }
+    }
+
+    fn delay<D>(self, delay: D) -> Delay<Self, D> {
+        Delay {
+            signal: self,
+            delay,
+        }
+    }
+
+    #[inline]
+    fn throttle<D>(
+        self,
+        delay: D,
+    ) -> Throttle<Self, D, Self::Item, impl FnMut(Self::Item, Self::Item) -> Self::Item> {
+        Self::throttle_reduce(self, delay, |_, value| value)
+    }
+
+    fn throttle_reduce<D, R>(self, delay: D, reduce: R) -> Throttle<Self, D, Self::Item, R> {
+        Throttle {
+            signal: self,
+            delay,
+            acc: None,
+            reduce,
+        }
+    }
+}
+
+impl<S: Signal + Sized> SignalTimeExt for S {}
+
+pin_project! {
+    #[derive(Debug)]
+    #[must_use = "Signals do nothing unless polled"]
+    pub struct Debounce<S, W, B, R> {
+        #[pin]
+        signal: S,
+        #[pin]
+        window: W,
+        acc: Option<B>,
+        reduce: R,
+    }
+}
+
+pin_project! {
+    #[derive(Debug)]
+    #[must_use = "Signals do nothing unless polled"]
+    pub struct Delay<S, D> {
+        #[pin]
+        signal: S,
+        #[pin]
+        delay: D,
+    }
+}
+
+pin_project! {
+    #[derive(Debug)]
+    #[must_use = "Signals do nothing unless polled"]
+    pub struct Throttle<S, D, B, R> {
+        #[pin]
+        signal: S,
+        #[pin]
+        delay: D,
+        acc: Option<B>,
+        reduce: R,
+    }
+}
 
 pub trait SignalExtMapBool
 where
@@ -1154,52 +1211,6 @@ where
             .signal
             .poll_change(cx)
             .map(|opt| opt.map(|opt| opt.unwrap_or_default()))
-    }
-}
-
-pin_project! {
-    #[derive(Debug)]
-    #[must_use = "Signals do nothing unless polled"]
-    pub struct Sequence<A>
-    where
-        A: SignalVec,
-    {
-        #[pin]
-        signal: A,
-        sequence: u64,
-    }
-}
-
-impl<A> Signal for Sequence<A>
-where
-    A: SignalVec,
-{
-    type Item = u64;
-
-    fn poll_change(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
-        let mut this = self.project();
-
-        let mut changed = false;
-
-        let done = loop {
-            break match this.signal.as_mut().poll_vec_change(cx) {
-                Poll::Ready(None) => true,
-                Poll::Ready(Some(_)) => {
-                    *this.sequence += 1;
-                    changed = true;
-                    continue;
-                }
-                Poll::Pending => false,
-            };
-        };
-
-        if changed {
-            Poll::Ready(Some(*this.sequence))
-        } else if done {
-            Poll::Ready(None)
-        } else {
-            Poll::Pending
-        }
     }
 }
 

@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file. The
 format is based on [Keep a Changelog], and this project aims to follow
 [Semantic Versioning].
 
+## [0.14.0] - 2026-07-02
+
+### Changed
+
+- `MutableExt::apply` and `MutableExt::apply_cloned` removed
+
+- `SignalVecFinalizerExt::seq` removed
+
 ## [0.13.2] - 2026-05-05
 
 ### Changed
