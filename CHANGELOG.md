@@ -6,6 +6,10 @@ format is based on [Keep a Changelog], and this project aims to follow
 
 ## [0.14.0] - 2026-07-02
 
+### Added
+
+- `SignalTimeExt` trait
+
 ### Changed
 
 - `MutableExt::apply` and `MutableExt::apply_cloned` removed

@@ -893,46 +893,43 @@ impl<S: SignalVec + Sized> SignalVecFlattenExt for S {}
 
 pub trait SignalTimeExt: Signal + Sized {
     #[inline]
-    fn debounce<W>(
+    fn debounce<W, F>(
         self,
         window: W,
-    ) -> Debounce<Self, W, Self::Item, impl FnMut(Self::Item, Self::Item) -> Self::Item> {
+    ) -> Debounce<Self, W, Self::Item, impl FnMut(Self::Item, Self::Item) -> Self::Item, F> {
         Self::debounce_reduce(self, window, |_, value| -> Self::Item { value })
     }
 
-    fn debounce_reduce<W, R>(self, window: W, reduce: R) -> Debounce<Self, W, Self::Item, R>
+    fn debounce_reduce<W, R, F>(self, window: W, reduce: R) -> Debounce<Self, W, Self::Item, R, F>
     where
         R: FnMut(Self::Item, Self::Item) -> Self::Item,
     {
         Debounce {
-            signal: self,
+            signal: Some(self),
             window,
             acc: None,
             reduce,
-        }
-    }
-
-    fn delay<D>(self, delay: D) -> Delay<Self, D> {
-        Delay {
-            signal: self,
-            delay,
+            future: None,
+            first: true,
         }
     }
 
     #[inline]
-    fn throttle<D>(
+    fn throttle_ext<D, F>(
         self,
         delay: D,
-    ) -> Throttle<Self, D, Self::Item, impl FnMut(Self::Item, Self::Item) -> Self::Item> {
+    ) -> Throttle<Self, D, Self::Item, impl FnMut(Self::Item, Self::Item) -> Self::Item, F> {
         Self::throttle_reduce(self, delay, |_, value| value)
     }
 
-    fn throttle_reduce<D, R>(self, delay: D, reduce: R) -> Throttle<Self, D, Self::Item, R> {
+    fn throttle_reduce<D, R, F>(self, delay: D, reduce: R) -> Throttle<Self, D, Self::Item, R, F> {
         Throttle {
-            signal: self,
+            signal: Some(self),
             delay,
             acc: None,
             reduce,
+            timeout: None,
+            first: true,
         }
     }
 }
@@ -942,37 +939,192 @@ impl<S: Signal + Sized> SignalTimeExt for S {}
 pin_project! {
     #[derive(Debug)]
     #[must_use = "Signals do nothing unless polled"]
-    pub struct Debounce<S, W, B, R> {
+    pub struct Debounce<S, W, B, R, D> {
         #[pin]
-        signal: S,
-        #[pin]
+        signal: Option<S>,
         window: W,
         acc: Option<B>,
         reduce: R,
+        #[pin]
+        future: Option<D>,
+        first: bool,
+    }
+}
+
+impl<S, W, B, R, F> Signal for Debounce<S, W, B, R, F>
+where
+    S: Signal<Item = B>,
+    W: FnMut() -> F,
+    F: Future<Output = ()>,
+    R: FnMut(B, B) -> B,
+{
+    type Item = Option<B>;
+
+    fn poll_change(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
+        let mut this = self.project();
+
+        let mut done = false;
+
+        loop {
+            match this
+                .signal
+                .as_mut()
+                .as_pin_mut()
+                .map(|signal| signal.poll_change(cx))
+            {
+                None => {
+                    done = true;
+                }
+                Some(Poll::Ready(None)) => {
+                    this.signal.set(None);
+                    this.future.set(Some((this.window)()));
+                    done = true;
+                }
+                Some(Poll::Ready(Some(value))) => {
+                    this.future.set(Some((this.window)()));
+                    *this.acc = Some(match this.acc.take() {
+                        None => value,
+                        Some(acc) => (this.reduce)(acc, value),
+                    });
+                    continue;
+                }
+                Some(Poll::Pending) => {}
+            }
+            break;
+        }
+
+        match this
+            .future
+            .as_mut()
+            .as_pin_mut()
+            .map(|delay| delay.poll(cx))
+        {
+            None => {}
+            Some(Poll::Ready(_)) => {
+                this.future.set(None);
+                match this.acc.take() {
+                    None => {}
+                    Some(value) => {
+                        *this.first = false;
+                        return Poll::Ready(Some(Some(value)));
+                    }
+                }
+            }
+            Some(Poll::Pending) => {
+                done = false;
+            }
+        }
+
+        if *this.first {
+            *this.first = false;
+            Poll::Ready(Some(None))
+        } else if done {
+            Poll::Ready(None)
+        } else {
+            Poll::Pending
+        }
     }
 }
 
 pin_project! {
     #[derive(Debug)]
     #[must_use = "Signals do nothing unless polled"]
-    pub struct Delay<S, D> {
+    pub struct Throttle<S, D, B, R, F> {
         #[pin]
-        signal: S,
-        #[pin]
-        delay: D,
-    }
-}
-
-pin_project! {
-    #[derive(Debug)]
-    #[must_use = "Signals do nothing unless polled"]
-    pub struct Throttle<S, D, B, R> {
-        #[pin]
-        signal: S,
-        #[pin]
+        signal: Option<S>,
         delay: D,
         acc: Option<B>,
         reduce: R,
+        #[pin]
+        timeout: Option<F>,
+        first: bool,
+    }
+}
+
+impl<S, D, B, R, F> Signal for Throttle<S, D, B, R, F>
+where
+    S: Signal<Item = B>,
+    D: FnMut() -> F,
+    F: Future<Output = ()>,
+    R: FnMut(B, B) -> B,
+{
+    type Item = Option<B>;
+
+    fn poll_change(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
+        let mut this = self.project();
+
+        let mut done = false;
+
+        loop {
+            match this
+                .signal
+                .as_mut()
+                .as_pin_mut()
+                .map(|signal| signal.poll_change(cx))
+            {
+                None => {
+                    done = true;
+                }
+                Some(Poll::Ready(None)) => {
+                    this.signal.set(None);
+                    done = true;
+                }
+                Some(Poll::Ready(Some(value))) => {
+                    *this.acc = Some(match this.acc.take() {
+                        None => value,
+                        Some(acc) => (this.reduce)(acc, value),
+                    });
+
+                    if this.timeout.is_none() {
+                        this.timeout.set(Some((this.delay)()));
+                        if let Some(Poll::Ready(())) =
+                            this.timeout.as_mut().as_pin_mut().map(|f| f.poll(cx))
+                        {
+                            this.timeout.set(None);
+                        }
+
+                        *this.first = false;
+                        return Poll::Ready(Some(this.acc.take()));
+                    }
+
+                    continue;
+                }
+                Some(Poll::Pending) => {}
+            }
+            break;
+        }
+
+        match this
+            .timeout
+            .as_mut()
+            .as_pin_mut()
+            .map(|delay| delay.poll(cx))
+        {
+            None => {}
+            Some(Poll::Ready(_)) => {
+                this.timeout.set(None);
+
+                match this.acc.take() {
+                    None => {}
+                    Some(value) => {
+                        *this.first = false;
+                        return Poll::Ready(Some(Some(value)));
+                    }
+                }
+            }
+            Some(Poll::Pending) => {
+                done = false;
+            }
+        }
+
+        if *this.first {
+            *this.first = false;
+            Poll::Ready(Some(None))
+        } else if done {
+            Poll::Ready(None)
+        } else {
+            Poll::Pending
+        }
     }
 }
 
