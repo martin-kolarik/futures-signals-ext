@@ -929,7 +929,6 @@ pub trait SignalTimeExt: Signal + Sized {
             acc: None,
             reduce,
             timeout: None,
-            first: true,
         }
     }
 }
@@ -1037,7 +1036,6 @@ pin_project! {
         reduce: R,
         #[pin]
         timeout: Option<F>,
-        first: bool,
     }
 }
 
@@ -1048,7 +1046,7 @@ where
     F: Future<Output = ()>,
     R: FnMut(B, B) -> B,
 {
-    type Item = Option<B>;
+    type Item = B;
 
     fn poll_change(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
@@ -1083,8 +1081,7 @@ where
                             this.timeout.set(None);
                         }
 
-                        *this.first = false;
-                        return Poll::Ready(Some(this.acc.take()));
+                        return Poll::Ready(this.acc.take());
                     }
 
                     continue;
@@ -1107,8 +1104,7 @@ where
                 match this.acc.take() {
                     None => {}
                     Some(value) => {
-                        *this.first = false;
-                        return Poll::Ready(Some(Some(value)));
+                        return Poll::Ready(Some(value));
                     }
                 }
             }
@@ -1117,10 +1113,7 @@ where
             }
         }
 
-        if *this.first {
-            *this.first = false;
-            Poll::Ready(Some(None))
-        } else if done {
+        if done {
             Poll::Ready(None)
         } else {
             Poll::Pending

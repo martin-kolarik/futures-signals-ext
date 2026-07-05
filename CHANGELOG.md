@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file. The
 format is based on [Keep a Changelog], and this project aims to follow
 [Semantic Versioning].
 
+## [0.14.1] - 2026-07-06
+
+### Changed
+
+- `SignalTimeEx::throttle` changed to emit `Signal::Item`, not `Option`
+
 ## [0.14.0] - 2026-07-02
 
 ### Added
