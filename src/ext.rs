@@ -1204,7 +1204,7 @@ where
 {
     fn map_some<F, U>(self, f: F) -> MapSome<Self, T, F, U>
     where
-        F: FnMut(&T) -> U,
+        F: FnMut(T) -> U,
     {
         MapSome {
             signal: self,
@@ -1216,7 +1216,7 @@ where
 
     fn map_some_default<F, U>(self, f: F) -> MapSomeDefault<Self, T, F, U>
     where
-        F: FnMut(&T) -> U,
+        F: FnMut(T) -> U,
         U: Default,
     {
         MapSomeDefault {
@@ -1229,7 +1229,7 @@ where
 
     fn and_then_some<F, U>(self, f: F) -> AndThenSome<Self, T, F, U>
     where
-        F: FnMut(&T) -> Option<U>,
+        F: FnMut(T) -> Option<U>,
     {
         AndThenSome {
             signal: self,
@@ -1267,7 +1267,7 @@ pin_project! {
 impl<T, S, F, U> Signal for MapSome<S, T, F, U>
 where
     S: Signal<Item = Option<T>>,
-    F: FnMut(&T) -> U,
+    F: FnMut(T) -> U,
 {
     type Item = Option<U>;
 
@@ -1275,7 +1275,7 @@ where
         let this = self.project();
         this.signal
             .poll_change(cx)
-            .map(|opt| opt.map(|opt| opt.map(|value| (this.mapper)(&value))))
+            .map(|opt| opt.map(|opt| opt.map(this.mapper)))
     }
 }
 
@@ -1294,7 +1294,7 @@ pin_project! {
 impl<T, S, F, U> Signal for MapSomeDefault<S, T, F, U>
 where
     S: Signal<Item = Option<T>>,
-    F: FnMut(&T) -> U,
+    F: FnMut(T) -> U,
     U: Default,
 {
     type Item = U;
@@ -1303,7 +1303,7 @@ where
         let this = self.project();
         this.signal
             .poll_change(cx)
-            .map(|opt| opt.map(|opt| opt.map(|value| (this.mapper)(&value)).unwrap_or_default()))
+            .map(|opt| opt.map(|opt| opt.map(this.mapper).unwrap_or_default()))
     }
 }
 
@@ -1322,7 +1322,7 @@ pin_project! {
 impl<T, S, F, U> Signal for AndThenSome<S, T, F, U>
 where
     S: Signal<Item = Option<T>>,
-    F: FnMut(&T) -> Option<U>,
+    F: FnMut(T) -> Option<U>,
 {
     type Item = Option<U>;
 
@@ -1330,7 +1330,7 @@ where
         let this = self.project();
         this.signal
             .poll_change(cx)
-            .map(|opt| opt.map(|opt| opt.and_then(|value| (this.mapper)(&value))))
+            .map(|opt| opt.map(|opt| opt.and_then(this.mapper)))
     }
 }
 

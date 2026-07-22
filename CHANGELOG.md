@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file. The
 format is based on [Keep a Changelog], and this project aims to follow
 [Semantic Versioning].
 
+## [0.15.0] - 2026-07-22
+
+### Changed
+
+- `SignalExtMapOption::*` map function changed to accept `T` (instead of `&T`)
+
 ## [0.14.1] - 2026-07-06
 
 ### Changed
